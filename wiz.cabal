@@ -1,5 +1,6 @@
 name:                wiz
 version:             0.1.0.0
+description:         A dialect of Lisp
 homepage:            https://github.com/maxhallinan/wiz#readme
 license:             MIT
 license-file:        LICENSE
