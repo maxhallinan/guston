@@ -1,8 +1,7 @@
 module Main (main) where
 
-import Test.Hspec (hspec, describe, it, shouldBe)
+import Spec.Parse
 
 main :: IO ()
-main = hspec $ describe "foo" $ do
-  it "true is true" $
-    True `shouldBe` True
+main = do
+  Spec.Parse.run

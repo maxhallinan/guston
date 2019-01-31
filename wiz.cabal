@@ -13,22 +13,32 @@ cabal-version:       >=1.10
 
 library 
   build-depends:        base >= 4.7 && < 5
+                      , megaparsec
+                      , parser-combinators
   default-language:     Haskell2010
-  ghc-options:          -Wall -threaded -rtsopts -with-rtsopts=-N
-  exposed-modules:      Lib
+  ghc-options:          -Wall
+  exposed-modules:      Parse
+                      , Syntax
   hs-source-dirs:       src
 
 test-suite spec
   build-depends:        base >= 4.7 && < 5
+                      , wiz
+                      , checkers
                       , hspec
+                      , QuickCheck
   default-language:     Haskell2010
+  exposed-modules:      Spec
+                      , Spec.Parse
   ghc-options:          -Wall -threaded -rtsopts -with-rtsopts=-N
   hs-source-dirs:       test
   main-is:              Spec.hs
   type:                 exitcode-stdio-1.0
+  other-modules:        Spec.Parse
 
 test-suite golden
   build-depends:        base >= 4.7 && < 5
+                      , wiz
                       , bytestring
                       , filepath
                       , Glob
