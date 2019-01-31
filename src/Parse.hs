@@ -26,18 +26,25 @@ program :: Parser S.Sexpr
 program = S.List <$> Mega.sepBy sexpr space
 
 sexpr :: Parser S.Sexpr
-sexpr = lexeme atom
+sexpr = lexeme (atom <|> list)
 
 atom :: Parser S.Sexpr
 atom = symbol
 
+list :: Parser S.Sexpr
+list = do
+  _     <- lexSymbol "("
+  exprs <- Mega.many sexpr
+  _     <- lexSymbol ")"
+  return $ S.List exprs
+
 symbol :: Parser S.Sexpr
 symbol = do
-  i   <- initial 
+  i   <- initial
   sub <- Mega.many subsequent
   return $ S.Symbol (i : sub)
-  where 
-      initial     = Char.letterChar <|> Mega.oneOf "!$%&*/:<=>?~_^" 
+  where
+      initial     = Char.letterChar <|> Mega.oneOf "!$%&*/:<=>?~_^"
       subsequent  = initial <|> Char.digitChar <|> Mega.oneOf ".+-"
 
 space :: Parser ()
@@ -51,3 +58,6 @@ space = Lex.space Char.space1 lineComment blockComment
 
 lexeme :: Parser a -> Parser a
 lexeme = Lex.lexeme space
+
+lexSymbol :: String -> Parser String
+lexSymbol = Lex.symbol space

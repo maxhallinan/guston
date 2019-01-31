@@ -5,7 +5,9 @@ A dialect of Lisp.
 **Grammar**
 
 ```ebnf
-sexpr = <atom> | "(" , { sexpr } , ")"
+sexpr = atom | list
+
+list = "(" , { sexpr } , ")"
 
 atom = symbol
 
