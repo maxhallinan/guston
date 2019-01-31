@@ -1,6 +1,6 @@
 module Parse (parseFile, parseString) where
 
-import Control.Applicative ((<|>))
+import Control.Applicative ((<|>), empty)
 import Control.Monad.Combinators (between)
 import qualified Text.Megaparsec.Char as Char
 import qualified Text.Megaparsec.Char.Lexer as Lex
@@ -48,13 +48,10 @@ symbol = do
       subsequent  = initial <|> Char.digitChar <|> Mega.oneOf ".+-"
 
 space :: Parser ()
-space = Lex.space Char.space1 lineComment blockComment
+space = Lex.space Char.space1 lineComment empty
   where
     lineComment :: Parser ()
     lineComment = Lex.skipLineComment ";"
-
-    blockComment :: Parser ()
-    blockComment = Lex.skipBlockComment "{-" "-}"
 
 lexeme :: Parser a -> Parser a
 lexeme = Lex.lexeme space

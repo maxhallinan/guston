@@ -3,7 +3,7 @@ module Spec.Parse where
 import Test.Hspec (hspec, describe, it)
 import Test.QuickCheck (Arbitrary, Gen, arbitrary, elements, property, resize)
 import Test.QuickCheck.Gen (oneof, listOf)
-import Test.QuickCheck.Instances.Char (lowerAlpha, upperAlpha, numeric)
+import Test.QuickCheck.Instances.Char (lowerAlpha, nonSpace, numeric, upperAlpha)
 
 import qualified Syntax as S
 import Parse (parseString, parseFile)
@@ -14,14 +14,12 @@ run = hspec $ do
     describe "Parse.parseFile" $ do
       it "parses a symbol" $ do
         property prop_parseFile_Sym
-
       it "parses a list" $ do
         property prop_parseFile_List
 
     describe "Parser.parseString" $ do
       it "parses a symbol" $ do
         property prop_parseString_Sym
-
       it "parses a list" $ do
         property prop_parseString_List
 
@@ -51,8 +49,13 @@ prop_parseString_List (ArbList l) =
     _ ->
       False
 
-expr :: Gen String
-expr = oneof [ atom, list ]
+sexpr :: Gen String
+sexpr = oneof [ atom, list ]
+
+lineComment :: Gen String
+lineComment = do
+  s <- listOf nonSpace
+  return $ unwords [";", s, "\n"]
 
 atom :: Gen String
 atom = token $ oneof [ symbol ]
@@ -63,7 +66,10 @@ token gen = do
   x   <- gen
   s2  <- space
   return (s1 ++ x ++ s2)
-  where space = listOf $ elements " \n"
+  where space       = oneof [ whitespace
+                            , lineComment
+                            ]
+        whitespace  = listOf $ elements " \n"
 
 parens :: Gen String -> Gen String
 parens gen = do
@@ -103,5 +109,5 @@ instance Arbitrary ArbList where
   arbitrary = ArbList <$> list
 
 list :: Gen String
-list = parens exprs
-  where exprs = unwords <$> (resize 2 $ listOf expr)
+list = parens sexprs
+  where sexprs = unwords <$> (resize 2 $ listOf sexpr)
