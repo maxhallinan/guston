@@ -26,12 +26,12 @@ run = hspec $ do
 prop_parseFile_Sym :: ArbSym -> Bool
 prop_parseFile_Sym (ArbSym s) = result == Right expected
   where result    = parseFile "" s
-        expected  = S.List [S.Sym s]
+        expected  = S.Lst [S.Sym s]
 
-prop_parseFile_List :: ArbList -> Bool
-prop_parseFile_List (ArbList l) =
+prop_parseFile_List :: ArbLst -> Bool
+prop_parseFile_List (ArbLst l) =
   case parseFile "" l of
-    Right (S.List [S.List _]) ->
+    Right (S.Lst [S.Lst _]) ->
       True
     _ ->
       False
@@ -41,10 +41,10 @@ prop_parseString_Sym (ArbSym s) = result == Right expected
   where result    = parseString s
         expected  = S.Sym s
 
-prop_parseString_List :: ArbList -> Bool
-prop_parseString_List (ArbList l) =
+prop_parseString_List :: ArbLst -> Bool
+prop_parseString_List (ArbLst l) =
   case parseString l of
-    Right (S.List _) ->
+    Right (S.Lst _) ->
       True
     _ ->
       False
@@ -103,10 +103,10 @@ symbol = do
                         , elements ".+-"
                         ]
 
-newtype ArbList = ArbList String deriving (Eq, Show)
+newtype ArbLst = ArbLst String deriving (Eq, Show)
 
-instance Arbitrary ArbList where
-  arbitrary = ArbList <$> list
+instance Arbitrary ArbLst where
+  arbitrary = ArbLst <$> list
 
 list :: Gen String
 list = parens sexprs

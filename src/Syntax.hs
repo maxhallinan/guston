@@ -2,5 +2,5 @@ module Syntax (Sexpr(..)) where
 
 data Sexpr = 
     Sym String
-  | List [Sexpr]
+  | Lst [Sexpr]
   deriving (Eq, Show)

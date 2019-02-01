@@ -23,7 +23,7 @@ contents :: Parser a -> Parser a
 contents p = between space Mega.eof p
 
 program :: Parser S.Sexpr
-program = S.List <$> Mega.sepBy sexpr space
+program = S.Lst <$> Mega.sepBy sexpr space
 
 sexpr :: Parser S.Sexpr
 sexpr = lexeme (atom <|> list)
@@ -36,7 +36,7 @@ list = do
   _     <- lexSymbol "("
   exprs <- Mega.many sexpr
   _     <- lexSymbol ")"
-  return $ S.List exprs
+  return $ S.Lst exprs
 
 symbol :: Parser S.Sexpr
 symbol = do

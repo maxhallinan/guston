@@ -11,13 +11,16 @@ build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
 
-library 
+library
   build-depends:        base >= 4.7 && < 5
+                      , containers
                       , megaparsec
+                      , mtl
                       , parser-combinators
   default-language:     Haskell2010
   ghc-options:          -Wall
-  exposed-modules:      Parse
+  exposed-modules:      Eval
+                      , Parse
                       , Syntax
   hs-source-dirs:       src
 
@@ -26,6 +29,8 @@ test-suite spec
                       , wiz
                       , checkers
                       , hspec
+                      , hspec-expectations
+                      , HUnit
                       , QuickCheck
   default-language:     Haskell2010
   exposed-modules:      Spec
@@ -49,7 +54,7 @@ test-suite golden
   hs-source-dirs:       test
   main-is:              Golden.hs
   type:                 exitcode-stdio-1.0
-  
+
 executable wiz
   build-depends:        base >= 4.7 && < 5
   default-language:     Haskell2010
