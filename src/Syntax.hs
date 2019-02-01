@@ -1,6 +1,6 @@
 module Syntax (Sexpr(..)) where
 
 data Sexpr = 
-    Symbol String
+    Sym String
   | List [Sexpr]
   deriving (Eq, Show)

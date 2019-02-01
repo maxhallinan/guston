@@ -23,10 +23,10 @@ run = hspec $ do
       it "parses a list" $ do
         property prop_parseString_List
 
-prop_parseFile_Sym :: ArbSymbol -> Bool
-prop_parseFile_Sym (ArbSymbol s) = result == Right expected
+prop_parseFile_Sym :: ArbSym -> Bool
+prop_parseFile_Sym (ArbSym s) = result == Right expected
   where result    = parseFile "" s
-        expected  = S.List [S.Symbol s]
+        expected  = S.List [S.Sym s]
 
 prop_parseFile_List :: ArbList -> Bool
 prop_parseFile_List (ArbList l) =
@@ -36,10 +36,10 @@ prop_parseFile_List (ArbList l) =
     _ ->
       False
 
-prop_parseString_Sym :: ArbSymbol -> Bool
-prop_parseString_Sym (ArbSymbol s) = result == Right expected
+prop_parseString_Sym :: ArbSym -> Bool
+prop_parseString_Sym (ArbSym s) = result == Right expected
   where result    = parseString s
-        expected  = S.Symbol s
+        expected  = S.Sym s
 
 prop_parseString_List :: ArbList -> Bool
 prop_parseString_List (ArbList l) =
@@ -78,10 +78,10 @@ parens gen = do
   p2  <- token $ return ")"
   return (p1 ++ x ++ p2)
 
-newtype ArbSymbol = ArbSymbol String deriving (Eq, Show)
+newtype ArbSym = ArbSym String deriving (Eq, Show)
 
-instance Arbitrary ArbSymbol where
-  arbitrary = ArbSymbol <$> symbol
+instance Arbitrary ArbSym where
+  arbitrary = ArbSym <$> symbol
 
 alpha :: Gen Char
 alpha = oneof [ lowerAlpha, upperAlpha ]

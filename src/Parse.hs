@@ -42,7 +42,7 @@ symbol :: Parser S.Sexpr
 symbol = do
   i   <- initial
   sub <- Mega.many subsequent
-  return $ S.Symbol (i : sub)
+  return $ S.Sym (i : sub)
   where
       initial     = Char.letterChar <|> Mega.oneOf "!$%&*/:<=>?~_^"
       subsequent  = initial <|> Char.digitChar <|> Mega.oneOf ".+-"
