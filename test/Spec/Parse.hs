@@ -1,50 +1,108 @@
 module Spec.Parse where
 
-import Test.Hspec (hspec, describe, it)
+import Test.Hspec (hspec, describe, it, shouldBe)
+import Test.Hspec.Expectations (Expectation)
+import Test.HUnit.Lang (assertFailure)
 import Test.QuickCheck (Arbitrary, Gen, arbitrary, elements, property, resize)
 import Test.QuickCheck.Gen (oneof, listOf)
 import Test.QuickCheck.Instances.Char (lowerAlpha, nonSpace, numeric, upperAlpha)
 
-import qualified Syntax as S
-import Parse (parseString, parseFile)
+import Syntax (Sexpr(..), SpecialForm(..))
+import Parse (parseStr, parseFile)
 
 run :: IO ()
 run = hspec $ do
   describe "Parse" $ do
     describe "Parse.parseFile" $ do
-      it "parses a symbol" $ do
-        property prop_parseFile_Sym
-      it "parses a list" $ do
-        property prop_parseFile_List
+      describe "special forms" $ do
+        it "parses atom?" $ do
+          "atom?" `parsesFileTo` (Lst [SFrm IsAtm])
+        it "parses car" $ do
+          "car" `parsesFileTo` (Lst [SFrm Car])
+        it "parses cdr" $ do
+          "cdr" `parsesFileTo` (Lst [SFrm Cdr])
+        it "parses cns" $ do
+          "cons" `parsesFileTo` (Lst [SFrm Cns])
+        it "parses define" $ do
+          "define" `parsesFileTo` (Lst [SFrm Def])
+        it "parses eq?" $ do
+          "eq?" `parsesFileTo` (Lst [SFrm IsEq])
+        it "parses lambda" $ do
+          "lambda" `parsesFileTo` (Lst [SFrm Lambda])
+        it "parses quote" $ do
+          "quote" `parsesFileTo` (Lst [SFrm Quot])
 
-    describe "Parser.parseString" $ do
-      it "parses a symbol" $ do
-        property prop_parseString_Sym
-      it "parses a list" $ do
-        property prop_parseString_List
+      describe "symbol" $ do
+        it "parses a symbol" $ do
+          property prop_parseFile_Sym
+
+      describe "list" $ do
+        it "parses a list" $ do
+          property prop_parseFile_List
+
+    describe "Parser.parseStr" $ do
+      describe "special forms" $ do
+        it "parses atom?" $ do
+          "atom?" `parsesStrTo` (SFrm IsAtm)
+        it "parses car" $ do
+          "car" `parsesStrTo` (SFrm Car)
+        it "parses cdr" $ do
+          "cdr" `parsesStrTo` (SFrm Cdr)
+        it "parses cons" $ do
+          "cons" `parsesStrTo` (SFrm Cns)
+        it "parses cond" $ do
+          "cond" `parsesStrTo` (SFrm Cond)
+        it "parses define" $ do
+          "define" `parsesStrTo` (SFrm Def)
+        it "parses eq?" $ do
+          "eq?" `parsesStrTo` (SFrm IsEq)
+        it "parses lambda" $ do
+          "lambda" `parsesStrTo` (SFrm Lambda)
+        it "parses quote" $ do
+          "quote" `parsesStrTo` (SFrm Quot)
+
+      describe "symbol" $ do
+        it "parses a symbol" $ do
+          property prop_parseStr_Sym
+
+      describe "list" $ do
+        it "parses a list" $ do
+          property prop_parseStr_List
+
+parsesFileTo :: String -> Sexpr -> Expectation
+parsesFileTo file sexpr =
+  case parseFile "" file of
+    Right result  -> result `shouldBe` sexpr
+    Left err      -> assertFailure $ show err
+
+parsesStrTo :: String -> Sexpr -> Expectation
+parsesStrTo str sexpr =
+  case parseStr str of
+    Right result  -> result `shouldBe` sexpr
+    Left err      -> assertFailure $ show err
 
 prop_parseFile_Sym :: ArbSym -> Bool
 prop_parseFile_Sym (ArbSym s) = result == Right expected
   where result    = parseFile "" s
-        expected  = S.Lst [S.Sym s]
+        expected  = Lst [Sym s]
 
 prop_parseFile_List :: ArbLst -> Bool
 prop_parseFile_List (ArbLst l) =
   case parseFile "" l of
-    Right (S.Lst [S.Lst _]) ->
+    Right (Lst [Lst _]) ->
       True
     _ ->
       False
 
-prop_parseString_Sym :: ArbSym -> Bool
-prop_parseString_Sym (ArbSym s) = result == Right expected
-  where result    = parseString s
-        expected  = S.Sym s
+prop_parseStr_Sym :: ArbSym -> Bool
+prop_parseStr_Sym (ArbSym s) = result == Right expected
+  where result    = parseStr s
+        expected  = Sym s
 
-prop_parseString_List :: ArbLst -> Bool
-prop_parseString_List (ArbLst l) =
-  case parseString l of
-    Right (S.Lst _) ->
+prop_parseStr_List :: ArbLst -> Bool
+prop_parseStr_List (ArbLst l) =
+  case parseStr l of
+    Right (Lst _) ->
       True
     _ ->
       False

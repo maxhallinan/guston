@@ -110,7 +110,7 @@ run = hspec $ do
           it "(lambda (x y) x) returns a function" $ do
             (Lst [Sym "lambda", Lst [Sym "x", Sym "y"], Sym "x"])
             `evaluatesTo`
-            (Lamd defaultEnv [Sym "x", Sym "y"] (Sym "x"))
+            (Fn defaultEnv [Sym "x", Sym "y"] (Sym "x"))
           it "(lambda (x y)) throws an exception" $ do
             pending
           it "(lambda (x y)) throws an argument number exception" $ do

@@ -1,4 +1,4 @@
-module Parse (parseFile, parseString) where
+module Parse (parseFile, parseStr) where
 
 import Control.Applicative ((<|>), empty)
 import Control.Monad.Combinators (between)
@@ -16,8 +16,8 @@ type ParseError = Err.ParseErrorBundle String Void
 parseFile :: String -> String -> Either ParseError S.Sexpr
 parseFile filename = Mega.parse (contents program) filename
 
-parseString :: String -> Either ParseError S.Sexpr
-parseString = Mega.parse (contents sexpr) ""
+parseStr :: String -> Either ParseError S.Sexpr
+parseStr = Mega.parse (contents sexpr) ""
 
 contents :: Parser a -> Parser a
 contents p = between space Mega.eof p
@@ -29,7 +29,7 @@ sexpr :: Parser S.Sexpr
 sexpr = lexeme (atom <|> list)
 
 atom :: Parser S.Sexpr
-atom = symbol
+atom = specialForm <|> symbol
 
 list :: Parser S.Sexpr
 list = do
@@ -37,6 +37,36 @@ list = do
   exprs <- Mega.many sexpr
   _     <- lexSymbol ")"
   return $ S.Lst exprs
+
+specialForm :: Parser S.Sexpr
+specialForm = S.SFrm <$> (car <|> cdr <|> cons <|> cond <|> def <|> isAtom <|> isEq <|> lambda <|> quote)
+
+car :: Parser S.SpecialForm
+car = Char.string "car" >> return S.Car
+
+cdr :: Parser S.SpecialForm
+cdr = Char.string "cdr" >> return S.Cdr
+
+cons :: Parser S.SpecialForm
+cons = Char.string "cons" >> return S.Cns
+
+cond :: Parser S.SpecialForm
+cond = Char.string "cond" >> return S.Cond
+
+def :: Parser S.SpecialForm
+def = Char.string "define" >> return S.Def
+
+isAtom :: Parser S.SpecialForm
+isAtom = Char.string "atom?" >> return S.IsAtm
+
+isEq :: Parser S.SpecialForm
+isEq = Char.string "eq?" >> return S.IsEq
+
+lambda :: Parser S.SpecialForm
+lambda = Char.string "lambda" >> return S.Lambda
+
+quote :: Parser S.SpecialForm
+quote = Char.string "quote" >> return S.Quot
 
 symbol :: Parser S.Sexpr
 symbol = do

@@ -71,7 +71,7 @@ eval sexpr = do
 
     (Lst [Sym "lambda", Lst params, body]) -> do
       env <- S.get
-      return $ Right $ Lamd env params body
+      return $ Right $ Fn env params body
 
     (Lst [Sym "quote", x])  -> return $ Right x
     (Lst (Sym "quote": _))  -> return $ Left Unknown
@@ -80,7 +80,7 @@ eval sexpr = do
       fn   <- eval x
       args <- traverse eval xs
       case (fn, traverse id args) of
-        (Right (Lamd env params body), Right args') -> do
+        (Right (Fn env params body), Right args') -> do
           let env' = M.fromList (zipWith (\(Sym k) v -> (k, v)) params args') <> env
           Eval $ S.withStateT (const env') (runEval . eval $ body)
 
