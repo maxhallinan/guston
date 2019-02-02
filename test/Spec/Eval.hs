@@ -30,7 +30,7 @@ run = hspec $ do
 
         describe "cdr" $ do
           it "(cdr xs) returns the tail of xs" $ do
-            (S.Lst [S.Sym "car", S.Lst [S.Sym "x", S.Sym "y", S.Sym "z"]])
+            (S.Lst [S.Sym "cdr", S.Lst [S.Sym "x", S.Sym "y", S.Sym "z"]])
             `evaluatesTo`
             (S.Lst [S.Sym "y", S.Sym "z"])
           it "(cdr xs) returns an empty list if xs is empty" $ do
@@ -56,12 +56,14 @@ run = hspec $ do
         describe "cons" $ do
           it "(cons x y) adds item x to the head of list y" $ do
             (S.Lst [ S.Sym "cons"
-                   , S.Sym "x"
-                   , S.Lst [S.Sym "quote", S.Lst [S.Sym "y", S.Sym "z"]]])
+                   , S.Lst [ S.Sym "quote", S.Sym "x" ]
+                   , S.Lst [ S.Sym "quote", S.Lst [S.Sym "y", S.Sym "z"]]])
             `evaluatesTo`
             (S.Lst [S.Sym "x", S.Sym "y", S.Sym "z"])
           it "(cons x y) returns a list of one if y is an empty list" $ do
-            (S.Lst [S.Sym "cons", S.Sym "x", S.Lst [S.Sym "quote", S.Lst []]])
+            (S.Lst [ S.Sym "cons"
+                   , S.Lst [ S.Sym "quote", S.Sym "x" ]
+                   , S.Lst [ S.Sym "quote", S.Lst []]])
             `evaluatesTo`
             (S.Lst [S.Sym "x"])
           it "(cons x y) throws an exception if y is not a list" $ do
@@ -82,7 +84,7 @@ run = hspec $ do
             (S.Lst [S.Sym "eq?", S.Sym "x", S.Sym "x"])
             `evaluatesTo`
             (S.Sym "true")
-          it "(eq x y) returns (quote ()) if x and y are not equivalent symbols" $ do
+          it "(eq x y) returns false if x and y are not equivalent symbols" $ do
             (S.Lst [S.Sym "eq?", S.Sym "x", S.Sym "y"])
             `evaluatesTo`
             (S.Sym "false")
