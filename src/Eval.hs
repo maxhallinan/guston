@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Eval (defaultEnv, evalInEnv) where
+module Eval (defaultEnv, eval, runEval) where
 
 import qualified Control.Applicative (empty)
 import qualified Control.Monad.State as S
@@ -22,9 +22,9 @@ data EvalErr =
 defaultEnv :: Env
 defaultEnv = M.empty
 
-evalInEnv :: Env -> Sexpr -> IO (Either EvalErr Sexpr, Env)
-evalInEnv env sexpr = S.runStateT evaled env
-  where evaled = runEval . eval $ sexpr
-
 eval :: Sexpr -> Eval (Either EvalErr Sexpr)
-eval sexpr = return (Right sexpr)
+eval sexpr = do
+  case sexpr of
+    (Lst [Sym "atom?", Sym _])  -> return $ Right $ Sym "true"
+    (Lst [Sym "atom?", _])      -> return $ Right $ Sym "false"
+    _ -> return $ Left Unknown

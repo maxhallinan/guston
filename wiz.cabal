@@ -31,6 +31,7 @@ test-suite spec
                       , hspec
                       , hspec-expectations
                       , HUnit
+                      , mtl
                       , QuickCheck
   default-language:     Haskell2010
   exposed-modules:      Spec
