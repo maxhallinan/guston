@@ -1,13 +1,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Eval (defaultEnv, eval, runEval) where
+module Eval (eval, runEval) where
 
 import Control.Monad.IO.Class
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
 
-import Syntax (Sexpr(..))
-
-type Env = M.Map String Sexpr
+import Syntax (Env, Sexpr(..))
 
 newtype Eval a = Eval { runEval :: S.StateT Env IO a }
   deriving ( Applicative
@@ -22,20 +20,15 @@ data EvalErr =
   | Debug (Either EvalErr Sexpr)
   deriving (Eq, Show)
 
-defaultEnv :: Env
-defaultEnv = M.empty
-
 eval :: Sexpr -> Eval (Either EvalErr Sexpr)
 eval sexpr = do
   case sexpr of
-    -- Variable lookup
     (Sym key) -> do
       env <- S.get
       case M.lookup key env of
         Just val  -> return $ Right $ val
         Nothing   -> return $ Left Unknown
 
-    -- Special forms
     (Lst [Sym "atom?", Sym _])  -> return $ Right $ Sym "true"
     (Lst [Sym "atom?", _])      -> return $ Right $ Sym "false"
     (Lst (Sym "atom?": _))      -> return $ Left Unknown
@@ -76,10 +69,13 @@ eval sexpr = do
       else return $ Right $ Sym "false"
     (Lst (Sym "eq?": _)) -> return $ Left Unknown
 
+    (Lst [Sym "lambda", Lst params, body]) -> do
+      env <- S.get
+      return $ Right $ Lambda env params body
+
     (Lst [Sym "quote", x])  -> return $ Right x
     (Lst (Sym "quote": _))  -> return $ Left Unknown
 
-    -- Function application
     (Lst (x:xs)) -> do
       return $ Left Unknown
 
