@@ -4,7 +4,7 @@ import qualified Data.Map as M
 
 data Sexpr = 
     Sym String
-  | Lambda Env [Sexpr] Sexpr
+  | Lamd Env [Sexpr] Sexpr
   | Lst [Sexpr]
   deriving (Eq, Show)
 
