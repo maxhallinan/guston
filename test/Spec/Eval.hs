@@ -1,6 +1,7 @@
 module Spec.Eval (run) where
 
 import Control.Monad.State (runStateT)
+import qualified Data.Map as M
 import Test.Hspec (hspec, describe, it, pending, shouldBe)
 import Test.Hspec.Expectations (Expectation)
 import Test.HUnit.Lang (assertFailure)
@@ -43,9 +44,10 @@ run = hspec $ do
         describe "cond" $ do
           it "(cond cs) returns the value of the first true condition in cs" $ do
             (S.Lst [ S.Sym "cond"
-                   , S.Lst [ S.Lst [ S.Sym "false", S.Sym "x" ]
-                           , S.Lst [ S.Sym "true", S.Sym "y" ]
-                           ]])
+                   , S.Lst [ S.Lst [ S.Lst [ S.Sym "quote", S.Sym "false" ]
+                                   , S.Lst [ S.Sym "quote", S.Sym "x" ]]
+                           , S.Lst [ S.Lst [ S.Sym "quote", S.Sym "true" ]
+                                   , S.Lst [ S.Sym "quote", S.Sym "y" ]]]])
             `evaluatesTo`
             (S.Sym "y")
           it "(cond cs) throws an exception if cs is an empty list" $ do
@@ -73,9 +75,23 @@ run = hspec $ do
 
         describe "define" $ do
           it "(define foo y) binds the value of y to the symbol foo" $ do
-            pending
+            (S.Lst [ S.Sym "define"
+                   , S.Sym "foo"
+                   , S.Lst [ S.Sym "quote", S.Sym "x" ]
+                   , S.Lst [ S.Sym "foo" ]])
+            `insertsInEnv`
+            ("foo", S.Sym "x")
           it "(define foo y) overrides the value bound to an existing symbol foo" $ do
-            pending
+            (S.Lst [ S.Sym "define"
+                   , S.Sym "foo"
+                   , S.Lst [ S.Sym "quote", S.Sym "x" ]
+                   , S.Lst [ S.Sym "define"
+                           , S.Sym "foo"
+                           , S.Lst [ S.Sym "quote", S.Sym "y" ]
+                           , S.Lst [ S.Sym "foo" ]
+                           ]])
+            `insertsInEnv`
+            ("foo", S.Sym "y")
           it "(define foo) throws an exception" $ do
             pending
 
@@ -137,3 +153,10 @@ evaluatesTo expr expected = do
   case result of
     (Right actual)  -> actual `shouldBe` expected
     (Left err)      -> assertFailure (show err)
+
+insertsInEnv :: S.Sexpr -> (String, S.Sexpr) -> Expectation
+insertsInEnv expr (key, expected) = do
+  (_, env) <- runStateT (runEval . eval $ expr) defaultEnv
+  case M.lookup key env of
+    Just actual -> actual `shouldBe` expected
+    Nothing     -> assertFailure $ "Variable " ++ key ++ "not found in env"

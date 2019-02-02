@@ -1,7 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Eval (defaultEnv, eval, runEval) where
 
-import qualified Control.Applicative (empty)
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
 
@@ -13,6 +12,7 @@ newtype Eval a = Eval { runEval :: S.StateT Env IO a }
   deriving ( Applicative
            , Functor
            , Monad
+           , S.MonadState Env
            )
 
 data EvalErr =
@@ -43,9 +43,22 @@ eval sexpr = do
       e2 <- eval $ Lst xs
       case (e1, e2) of 
         (Right y, Right (Lst ys)) -> return $ Right $ Lst (y:ys)
-        (Right y, Right _)        -> return $ Left $ Unknown
+        (Right _, Right _)        -> return $ Left $ Unknown
         _                         -> return $ Left $ Unknown
     (Lst (Sym "cons": _)) -> return $ Left $ Unknown
+
+    (Lst [Sym "cond", Lst conds]) -> evalCond conds
+    (Lst (Sym "cond": _)) -> return $ Left $ Unknown
+
+    (Lst [Sym "define", Sym key, expr, body]) -> do 
+      val <- eval expr
+      case val of
+        (Right x) -> do
+          env <- S.get
+          _   <- S.put (M.insert key x env)
+          eval body
+
+        _ -> return val 
 
     (Lst [Sym "eq?", Sym x, Sym y]) -> 
       if x == y 
@@ -57,3 +70,13 @@ eval sexpr = do
     (Lst (Sym "quote": _))  -> return $ Left Unknown 
 
     _ -> return $ Left Unknown
+
+evalCond :: [Sexpr] -> Eval (Either EvalErr Sexpr)
+evalCond [] = return $ Right $ Sym "false"
+evalCond (Lst [predicate, body]: cs) = do
+  x <- eval predicate
+  case x of
+    Right (Sym "true")  -> eval body
+    Right (Sym "false") -> evalCond cs
+    _                   -> return $ Left Unknown
+evalCond _ = return $ Left Unknown    
