@@ -78,7 +78,7 @@ run = hspec $ do
             (S.Lst [ S.Sym "define"
                    , S.Sym "foo"
                    , S.Lst [ S.Sym "quote", S.Sym "x" ]
-                   , S.Lst [ S.Sym "foo" ]])
+                   , S.Sym "foo" ])
             `insertsInEnv`
             ("foo", S.Sym "x")
           it "(define foo y) overrides the value bound to an existing symbol foo" $ do
@@ -88,8 +88,7 @@ run = hspec $ do
                    , S.Lst [ S.Sym "define"
                            , S.Sym "foo"
                            , S.Lst [ S.Sym "quote", S.Sym "y" ]
-                           , S.Lst [ S.Sym "foo" ]
-                           ]])
+                           , S.Sym "foo" ]])
             `insertsInEnv`
             ("foo", S.Sym "y")
           it "(define foo) throws an exception" $ do
@@ -140,10 +139,11 @@ run = hspec $ do
       describe "variable lookup" $ do
           it "evaluating x returns the value bound to the symbol x" $ do
             (S.Lst [ S.Sym "define"
-                   , S.Lst [ S.Sym "quote", S.Sym "foo" ]
-                   , S.Lst [ S.Sym "quote", S.Sym "x" ]])
+                   , S.Sym "foo"
+                   , S.Lst [ S.Sym "quote", S.Sym "x" ]
+                   , S.Sym "foo" ])
             `evaluatesTo`
-            (S.Sym "foo")
+            (S.Sym "x")
           it "evaluating x throws an unknown variable exception when no value is bound to x" $ do
             pending
 

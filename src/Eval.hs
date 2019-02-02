@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Eval (defaultEnv, eval, runEval) where
 
+import Control.Monad.IO.Class
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
 
@@ -13,11 +14,12 @@ newtype Eval a = Eval { runEval :: S.StateT Env IO a }
            , Functor
            , Monad
            , S.MonadState Env
+           , MonadIO
            )
 
 data EvalErr =
     Unknown
-  | Debug (Either EvalErr Sexpr, Either EvalErr Sexpr)
+  | Debug (Either EvalErr Sexpr)
   deriving (Eq, Show)
 
 defaultEnv :: Env
@@ -26,6 +28,14 @@ defaultEnv = M.empty
 eval :: Sexpr -> Eval (Either EvalErr Sexpr)
 eval sexpr = do
   case sexpr of
+    -- Variable lookup
+    (Sym key) -> do
+      env <- S.get
+      case M.lookup key env of
+        Just val  -> return $ Right $ val
+        Nothing   -> return $ Left Unknown
+
+    -- Special forms
     (Lst [Sym "atom?", Sym _])  -> return $ Right $ Sym "true"
     (Lst [Sym "atom?", _])      -> return $ Right $ Sym "false"
     (Lst (Sym "atom?": _))      -> return $ Left Unknown
@@ -38,10 +48,10 @@ eval sexpr = do
     (Lst [Sym "cdr", Lst (_:xs)]) -> return $ Right $ Lst xs
     (Lst (Sym "cdr": _))          -> return $ Left Unknown
 
-    (Lst [Sym "cons", x, Lst xs]) -> do 
-      e1 <- eval x 
+    (Lst [Sym "cons", x, Lst xs]) -> do
+      e1 <- eval x
       e2 <- eval $ Lst xs
-      case (e1, e2) of 
+      case (e1, e2) of
         (Right y, Right (Lst ys)) -> return $ Right $ Lst (y:ys)
         (Right _, Right _)        -> return $ Left $ Unknown
         _                         -> return $ Left $ Unknown
@@ -50,7 +60,7 @@ eval sexpr = do
     (Lst [Sym "cond", Lst conds]) -> evalCond conds
     (Lst (Sym "cond": _)) -> return $ Left $ Unknown
 
-    (Lst [Sym "define", Sym key, expr, body]) -> do 
+    (Lst [Sym "define", Sym key, expr, body]) -> do
       val <- eval expr
       case val of
         (Right x) -> do
@@ -58,16 +68,20 @@ eval sexpr = do
           _   <- S.put (M.insert key x env)
           eval body
 
-        _ -> return val 
+        _ -> return val
 
-    (Lst [Sym "eq?", Sym x, Sym y]) -> 
-      if x == y 
-      then return $ Right $ Sym "true" 
+    (Lst [Sym "eq?", Sym x, Sym y]) ->
+      if x == y
+      then return $ Right $ Sym "true"
       else return $ Right $ Sym "false"
     (Lst (Sym "eq?": _)) -> return $ Left Unknown
 
     (Lst [Sym "quote", x])  -> return $ Right x
-    (Lst (Sym "quote": _))  -> return $ Left Unknown 
+    (Lst (Sym "quote": _))  -> return $ Left Unknown
+
+    -- Function application
+    (Lst (x:xs)) -> do
+      return $ Left Unknown
 
     _ -> return $ Left Unknown
 
@@ -79,4 +93,4 @@ evalCond (Lst [predicate, body]: cs) = do
     Right (Sym "true")  -> eval body
     Right (Sym "false") -> evalCond cs
     _                   -> return $ Left Unknown
-evalCond _ = return $ Left Unknown    
+evalCond _ = return $ Left Unknown
