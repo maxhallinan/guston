@@ -17,11 +17,11 @@ defaultEnv = M.empty
 data SpecialForm =
     Car
   | Cdr
-  | Cns
+  | Cons
   | Cond
   | Def
   | IsAtm
   | IsEq
   | Lambda
-  | Quot
+  | Quote
   deriving (Eq, Show)

@@ -22,7 +22,7 @@ run = hspec $ do
         it "parses cdr" $ do
           "cdr" `parsesFileTo` (Lst [SFrm Cdr])
         it "parses cns" $ do
-          "cons" `parsesFileTo` (Lst [SFrm Cns])
+          "cons" `parsesFileTo` (Lst [SFrm Cons])
         it "parses define" $ do
           "define" `parsesFileTo` (Lst [SFrm Def])
         it "parses eq?" $ do
@@ -30,7 +30,7 @@ run = hspec $ do
         it "parses lambda" $ do
           "lambda" `parsesFileTo` (Lst [SFrm Lambda])
         it "parses quote" $ do
-          "quote" `parsesFileTo` (Lst [SFrm Quot])
+          "quote" `parsesFileTo` (Lst [SFrm Quote])
 
       describe "symbol" $ do
         it "parses a symbol" $ do
@@ -49,7 +49,7 @@ run = hspec $ do
         it "parses cdr" $ do
           "cdr" `parsesStrTo` (SFrm Cdr)
         it "parses cons" $ do
-          "cons" `parsesStrTo` (SFrm Cns)
+          "cons" `parsesStrTo` (SFrm Cons)
         it "parses cond" $ do
           "cond" `parsesStrTo` (SFrm Cond)
         it "parses define" $ do
@@ -59,7 +59,7 @@ run = hspec $ do
         it "parses lambda" $ do
           "lambda" `parsesStrTo` (SFrm Lambda)
         it "parses quote" $ do
-          "quote" `parsesStrTo` (SFrm Quot)
+          "quote" `parsesStrTo` (SFrm Quote)
 
       describe "symbol" $ do
         it "parses a symbol" $ do

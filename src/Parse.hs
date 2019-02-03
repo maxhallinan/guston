@@ -39,7 +39,7 @@ list = do
   return $ S.Lst exprs
 
 specialForm :: Parser S.Sexpr
-specialForm = S.SFrm <$> (car <|> cdr <|> cons <|> cond <|> def <|> isAtom <|> isEq <|> lambda <|> quote)
+specialForm = S.SFrm <$> (car <|> cdr <|> cons <|> cond <|> def <|> isAtm <|> isEq <|> lambda <|> quote)
 
 car :: Parser S.SpecialForm
 car = Char.string "car" >> return S.Car
@@ -48,7 +48,7 @@ cdr :: Parser S.SpecialForm
 cdr = Char.string "cdr" >> return S.Cdr
 
 cons :: Parser S.SpecialForm
-cons = Char.string "cons" >> return S.Cns
+cons = Char.string "cons" >> return S.Cons
 
 cond :: Parser S.SpecialForm
 cond = Char.string "cond" >> return S.Cond
@@ -56,8 +56,8 @@ cond = Char.string "cond" >> return S.Cond
 def :: Parser S.SpecialForm
 def = Char.string "define" >> return S.Def
 
-isAtom :: Parser S.SpecialForm
-isAtom = Char.string "atom?" >> return S.IsAtm
+isAtm :: Parser S.SpecialForm
+isAtm = Char.string "atom?" >> return S.IsAtm
 
 isEq :: Parser S.SpecialForm
 isEq = Char.string "eq?" >> return S.IsEq
@@ -66,7 +66,7 @@ lambda :: Parser S.SpecialForm
 lambda = Char.string "lambda" >> return S.Lambda
 
 quote :: Parser S.SpecialForm
-quote = Char.string "quote" >> return S.Quot
+quote = Char.string "quote" >> return S.Quote
 
 symbol :: Parser S.Sexpr
 symbol = do

@@ -6,7 +6,7 @@ import Test.Hspec (hspec, describe, it, pending, shouldBe)
 import Test.Hspec.Expectations (Expectation)
 import Test.HUnit.Lang (assertFailure)
 
-import Syntax (Sexpr(..), defaultEnv)
+import Syntax (Sexpr(..), SpecialForm(..), defaultEnv)
 import Eval (eval, runEval)
 
 run :: IO ()
@@ -17,25 +17,25 @@ run = hspec $ do
       describe "special forms" $ do
         describe "atom?" $ do
           it "(atom? x) evaluates to true when x is an atom" $ do
-            (Lst [Sym "atom?", Sym "x"]) `evaluatesTo` (Sym "true")
+            (Lst [SFrm IsAtm, Sym "x"]) `evaluatesTo` (Sym "true")
           it "(atom? x) evaluates to false when x is not an atom" $ do
-            (Lst [Sym "atom?", Lst []])
+            (Lst [SFrm IsAtm, Lst []])
             `evaluatesTo`
             (Sym "false")
 
         describe "car" $ do
           it "(car xs) returns the first item in xs" $ do
-            (Lst [Sym "car", Lst [Sym "x"]]) `evaluatesTo` (Sym "x")
+            (Lst [SFrm Car, Lst [Sym "x"]]) `evaluatesTo` (Sym "x")
           it "(car xs) throws an exception if xs is not a list" $ do
             pending
 
         describe "cdr" $ do
           it "(cdr xs) returns the tail of xs" $ do
-            (Lst [Sym "cdr", Lst [Sym "x", Sym "y", Sym "z"]])
+            (Lst [SFrm Cdr, Lst [Sym "x", Sym "y", Sym "z"]])
             `evaluatesTo`
             (Lst [Sym "y", Sym "z"])
           it "(cdr xs) returns an empty list if xs is empty" $ do
-            (Lst [Sym "cdr", Lst []])
+            (Lst [SFrm Cdr, Lst []])
             `evaluatesTo`
             (Lst [])
           it "(car xs) throws an exception if xs is not a list" $ do
@@ -43,11 +43,14 @@ run = hspec $ do
 
         describe "cond" $ do
           it "(cond cs) returns the value of the first true condition in cs" $ do
-            (Lst [ Sym "cond"
-                   , Lst [ Lst [ Lst [ Sym "quote", Sym "false" ]
-                                     , Lst [ Sym "quote", Sym "x" ]]
-                         , Lst [ Lst [ Sym "quote", Sym "true" ]
-                                     , Lst [ Sym "quote", Sym "y" ]]]])
+            (Lst [ SFrm Cond
+                 , Lst [ Lst [ SFrm Quote, Sym "false" ]
+                       , Lst [ SFrm Quote, Sym "x" ]
+                       ]
+                 , Lst [ Lst [ SFrm Quote, Sym "true" ]
+                       , Lst [ SFrm Quote, Sym "y" ]
+                       ]
+                 ])
             `evaluatesTo`
             (Sym "y")
           it "(cond cs) throws an exception if cs is an empty list" $ do
@@ -57,15 +60,15 @@ run = hspec $ do
 
         describe "cons" $ do
           it "(cons x y) adds item x to the head of list y" $ do
-            (Lst [ Sym "cons"
-                 , Lst [ Sym "quote", Sym "x" ]
-                 , Lst [ Sym "quote", Lst [Sym "y", Sym "z"]]])
+            (Lst [ SFrm Cons
+                 , Lst [ SFrm Quote, Sym "x" ]
+                 , Lst [ SFrm Quote, Lst [Sym "y", Sym "z"]]])
             `evaluatesTo`
             (Lst [Sym "x", Sym "y", Sym "z"])
           it "(cons x y) returns a list of one if y is an empty list" $ do
-            (Lst [ Sym "cons"
-                 , Lst [ Sym "quote", Sym "x" ]
-                 , Lst [ Sym "quote", Lst []]])
+            (Lst [ SFrm Cons
+                 , Lst [ SFrm Quote, Sym "x" ]
+                 , Lst [ SFrm Quote, Lst []]])
             `evaluatesTo`
             (Lst [Sym "x"])
           it "(cons x y) throws an exception if y is not a list" $ do
@@ -75,19 +78,19 @@ run = hspec $ do
 
         describe "define" $ do
           it "(define foo y) binds the value of y to the symbol foo" $ do
-            (Lst [ Sym "define"
+            (Lst [ SFrm Def
                  , Sym "foo"
-                 , Lst [ Sym "quote", Sym "x" ]
+                 , Lst [ SFrm Quote, Sym "x" ]
                  , Sym "foo" ])
             `insertsInEnv`
             ("foo", Sym "x")
           it "(define foo y) overrides the value bound to an existing symbol foo" $ do
-            (Lst [ Sym "define"
+            (Lst [ SFrm Def
                  , Sym "foo"
-                 , Lst [ Sym "quote", Sym "x" ]
-                 , Lst [ Sym "define"
+                 , Lst [ SFrm Quote, Sym "x" ]
+                 , Lst [ SFrm Def
                        , Sym "foo"
-                       , Lst [ Sym "quote", Sym "y" ]
+                       , Lst [ SFrm Quote, Sym "y" ]
                        , Sym "foo" ]])
             `insertsInEnv`
             ("foo", Sym "y")
@@ -96,11 +99,11 @@ run = hspec $ do
 
         describe "eq?" $ do
           it "(eq x y) returns true if x and y are equivalent symbols" $ do
-            (Lst [Sym "eq?", Sym "x", Sym "x"])
+            (Lst [SFrm IsEq, Sym "x", Sym "x"])
             `evaluatesTo`
             (Sym "true")
           it "(eq x y) returns false if x and y are not equivalent symbols" $ do
-            (Lst [Sym "eq?", Sym "x", Sym "y"])
+            (Lst [SFrm IsEq, Sym "x", Sym "y"])
             `evaluatesTo`
             (Sym "false")
           it "(eq x y) throws an exception if x and y are not symbols" $ do
@@ -108,7 +111,7 @@ run = hspec $ do
 
         describe "lambda" $ do
           it "(lambda (x y) x) returns a function" $ do
-            (Lst [Sym "lambda", Lst [Sym "x", Sym "y"], Sym "x"])
+            (Lst [SFrm Lambda, Lst [Sym "x", Sym "y"], Sym "x"])
             `evaluatesTo`
             (Fn defaultEnv [Sym "x", Sym "y"] (Sym "x"))
           it "(lambda (x y)) throws an exception" $ do
@@ -120,19 +123,19 @@ run = hspec $ do
 
         describe "quote" $ do
           it "(quote (x, y)) evaluates to (x y)" $ do
-            (Lst [Sym "quote", Lst [Sym "x", Sym "y"]])
+            (Lst [SFrm Quote, Lst [Sym "x", Sym "y"]])
             `evaluatesTo`
             (Lst [Sym "x", Sym "y"])
           it "(quote x) evaluates to the symbol x" $ do
-            (Lst [Sym "quote", Sym "x"]) `evaluatesTo` (Sym "x")
+            (Lst [SFrm Quote, Sym "x"]) `evaluatesTo` (Sym "x")
           it "(quote x y z) throws an argument exception" $ do
             pending
 
       describe "function application" $ do
           it "((lambda (x) x) (quote y)) evaluates to the symbol y" $ do
-            (Lst [ Lst [ Sym "lambda", Lst [ Sym "x" ]
+            (Lst [ Lst [ SFrm Lambda, Lst [ Sym "x" ]
                        , Sym "x" ]
-                 , Lst [ Sym "quote", Sym "y" ]])
+                 , Lst [ SFrm Quote, Sym "y" ]])
             `evaluatesTo`
             (Sym "y")
           it "((lambda (x y) y) (quote z)) throws an arguments exception" $ do
@@ -140,9 +143,9 @@ run = hspec $ do
 
       describe "variable lookup" $ do
           it "evaluating x returns the value bound to the symbol x" $ do
-            (Lst [ Sym "define"
+            (Lst [ SFrm Def
                  , Sym "foo"
-                 , Lst [ Sym "quote", Sym "x" ]
+                 , Lst [ SFrm Quote, Sym "x" ]
                  , Sym "foo" ])
             `evaluatesTo`
             (Sym "x")
