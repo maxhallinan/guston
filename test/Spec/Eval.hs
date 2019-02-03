@@ -7,7 +7,7 @@ import Test.Hspec.Expectations (Expectation)
 import Test.HUnit.Lang (assertFailure)
 
 import Syntax (Sexpr(..), SpecialForm(..), defaultEnv)
-import Eval (eval, runEval)
+import Eval (EvalErr(..), eval, runEval)
 
 run :: IO ()
 run = hspec $ do
@@ -22,12 +22,16 @@ run = hspec $ do
             (Lst [SFrm IsAtm, Lst []])
             `evaluatesTo`
             (Sym "false")
+          it "(atom? x y) fails with NumArgs" $ do
+            (Lst [SFrm IsAtm, Sym "x", Sym "y"]) `failsWith` NumArgs
 
         describe "car" $ do
           it "(car xs) returns the first item in xs" $ do
             (Lst [SFrm Car, Lst [Sym "x"]]) `evaluatesTo` (Sym "x")
-          it "(car xs) throws an exception if xs is not a list" $ do
-            pending
+          it "(car xs) fails with WrongTipe if xs is not a list" $ do
+            (Lst [SFrm Car, Sym "x"]) `failsWith` WrongTipe
+          it "(car xs) fails with LstLength if xs is an empty list" $ do
+            (Lst [SFrm Car, Lst []]) `failsWith` LstLength
 
         describe "cdr" $ do
           it "(cdr xs) returns the tail of xs" $ do
@@ -35,11 +39,9 @@ run = hspec $ do
             `evaluatesTo`
             (Lst [Sym "y", Sym "z"])
           it "(cdr xs) returns an empty list if xs is empty" $ do
-            (Lst [SFrm Cdr, Lst []])
-            `evaluatesTo`
-            (Lst [])
+            (Lst [SFrm Cdr, Lst []]) `failsWith` LstLength
           it "(car xs) throws an exception if xs is not a list" $ do
-            pending
+            (Lst [SFrm Cdr, Sym "foo"]) `failsWith` WrongTipe
 
         describe "cond" $ do
           it "(cond cs) returns the value of the first true condition in cs" $ do
@@ -53,10 +55,32 @@ run = hspec $ do
                  ])
             `evaluatesTo`
             (Sym "y")
-          it "(cond cs) throws an exception if cs is an empty list" $ do
-            pending
+          it "(cond (quote ())) fails with NotPair" $ do
+            (Lst [SFrm Cond, Lst []])
+            `failsWith`
+            NotPair
+          it "(cond ((quote x))) fails with NotPair" $ do
+            (Lst [SFrm Cond
+                 , Lst [Lst [SFrm Quote, Sym "x"]]
+                 ])
+            `failsWith`
+            NotPair
+          it "(cond ((quote x) (quote y) (quote z))) fails with NotPair" $ do
+            (Lst [SFrm Cond
+                 , Lst [Lst [SFrm Quote, Sym "x"]]
+                 , Lst [Lst [SFrm Quote, Sym "y"]]
+                 , Lst [Lst [SFrm Quote, Sym "z"]]
+                 ])
+            `failsWith`
+            NotPair
           it "(cond cs) throws an exception if cs is not a list" $ do
-            pending
+            (Lst [ SFrm Cond
+                 , Lst [ Lst [SFrm Quote, Sym "x"]
+                       , Lst [SFrm Quote, Sym "y"]
+                       ]
+                 ])
+            `failsWith`
+            WrongTipe
 
         describe "cons" $ do
           it "(cons x y) adds item x to the head of list y" $ do
@@ -71,10 +95,21 @@ run = hspec $ do
                  , Lst [ SFrm Quote, Lst []]])
             `evaluatesTo`
             (Lst [Sym "x"])
-          it "(cons x y) throws an exception if y is not a list" $ do
-            pending
-          it "(cons x) throws an exception" $ do
-            pending
+          it "(cons (quote x) (quote y)) fails with WrongTipe" $ do
+            (Lst [ SFrm Cons
+                 , Lst [ SFrm Quote, Sym "x" ]
+                 , Lst [ SFrm Quote, Sym "y" ]
+                 ])
+            `failsWith`
+            WrongTipe
+          it "(cons x y z) fails with NumArgs" $ do
+            (Lst [ SFrm Cons
+                 , Lst [ SFrm Quote, Sym "x" ]
+                 , Lst [ SFrm Quote, Sym "y" ]
+                 , Lst [ SFrm Quote, Sym "y" ]
+                 ])
+            `failsWith`
+            NumArgs
 
         describe "define" $ do
           it "(define foo y) binds the value of y to the symbol foo" $ do
@@ -94,8 +129,20 @@ run = hspec $ do
                        , Sym "foo" ]])
             `insertsInEnv`
             ("foo", Sym "y")
-          it "(define foo) throws an exception" $ do
-            pending
+          it "(define '(x) 'x 'y) fails with WrongTipe" $ do
+            (Lst [ SFrm Def
+                 , Lst [ SFrm Quote, Lst [ Sym "x" ] ]
+                 , Lst [ SFrm Quote, Sym "x" ]
+                 , Sym "x"
+                 ])
+            `failsWith`
+            WrongTipe
+          it "(define x) fails with NumArgs" $ do
+            (Lst [ SFrm Def
+                 , Lst [ Sym "x" ]
+                 ])
+            `failsWith`
+            NumArgs
 
         describe "eq?" $ do
           it "(eq x y) returns true if x and y are equivalent symbols" $ do
@@ -106,20 +153,44 @@ run = hspec $ do
             (Lst [SFrm IsEq, Sym "x", Sym "y"])
             `evaluatesTo`
             (Sym "false")
-          it "(eq x y) throws an exception if x and y are not symbols" $ do
-            pending
+          it "(eq x y) fails with WrongTipe if x is not a symbol" $ do
+            (Lst [SFrm IsEq, Lst [], Sym "y"])
+            `failsWith`
+            WrongTipe
+          it "(eq x y) fails with WrongTipe if y is not a symbol" $ do
+            (Lst [SFrm IsEq, Sym "y", Lst []])
+            `failsWith`
+            WrongTipe
+          it "(eq x y) fails with WrongTipe if y is not a symbol" $ do
+            (Lst [SFrm IsEq, Lst [], Lst []])
+            `failsWith`
+            WrongTipe
+          it "(eq x) fails with NumArgs" $ do
+            (Lst [SFrm IsEq, Sym "x"])
+            `failsWith`
+            NumArgs
+          it "(eq x y z) fails with NumArgs" $ do
+            (Lst [SFrm IsEq, Sym "x", Sym "y", Sym "z"])
+            `failsWith`
+            NumArgs
 
         describe "lambda" $ do
           it "(lambda (x y) x) returns a function" $ do
             (Lst [SFrm Lambda, Lst [Sym "x", Sym "y"], Sym "x"])
             `evaluatesTo`
             (Fn defaultEnv [Sym "x", Sym "y"] (Sym "x"))
-          it "(lambda (x y)) throws an exception" $ do
-            pending
-          it "(lambda (x y)) throws an argument number exception" $ do
-            pending
-          it "(lambda x y) throws type error exception" $ do
-            pending
+          it "(lambda (x y)) fails with NumArgs" $ do
+            (Lst [SFrm Lambda, Lst [Sym "x", Sym "y"]])
+            `failsWith`
+            NumArgs
+          it "(lambda (x y) z a) fails with NumArgs" $ do
+            (Lst [SFrm Lambda, Lst [Sym "x", Sym "y"], Sym "z", Sym "a"])
+            `failsWith`
+            NumArgs
+          it "(lambda x y) fails with WrongTipe" $ do
+            (Lst [SFrm Lambda, Sym "x", Sym "y"])
+            `failsWith`
+            WrongTipe
 
         describe "quote" $ do
           it "(quote (x, y)) evaluates to (x y)" $ do
@@ -128,8 +199,10 @@ run = hspec $ do
             (Lst [Sym "x", Sym "y"])
           it "(quote x) evaluates to the symbol x" $ do
             (Lst [SFrm Quote, Sym "x"]) `evaluatesTo` (Sym "x")
-          it "(quote x y z) throws an argument exception" $ do
-            pending
+          it "(quote x y) fails with NumArgs" $ do
+            (Lst [SFrm Quote, Sym "x", Sym "y"])
+            `failsWith`
+            NumArgs
 
       describe "function application" $ do
           it "((lambda (x) x) (quote y)) evaluates to the symbol y" $ do
@@ -138,7 +211,9 @@ run = hspec $ do
                  , Lst [ SFrm Quote, Sym "y" ]])
             `evaluatesTo`
             (Sym "y")
-          it "((lambda (x y) y) (quote z)) throws an arguments exception" $ do
+          it "((lambda (x y) y) (quote z)) fails with NumArgs" $ do
+            pending
+          it "(begin (define x (quote y)) (y (quote z))) fails with NotFn" $ do
             pending
 
       describe "variable lookup" $ do
@@ -150,7 +225,7 @@ run = hspec $ do
             `evaluatesTo`
             (Sym "x")
           it "evaluating x throws an unknown variable exception when no value is bound to x" $ do
-            pending
+            (Sym "x") `failsWith` UnknownVar
 
 evaluatesTo :: Sexpr -> Sexpr -> Expectation
 evaluatesTo expr expected = do
@@ -158,6 +233,13 @@ evaluatesTo expr expected = do
   case result of
     (Right actual)  -> actual `shouldBe` expected
     (Left err)      -> assertFailure (show err)
+
+failsWith :: Sexpr -> EvalErr -> Expectation
+failsWith expr expected = do
+  (result, _) <- runStateT (runEval . eval $ expr) defaultEnv
+  case result of
+    (Right x)     -> assertFailure $ "expected evaluation to fail but received: " ++ (show x)
+    (Left actual) -> actual `shouldBe` expected
 
 insertsInEnv :: Sexpr -> (String, Sexpr) -> Expectation
 insertsInEnv expr (key, expected) = do
