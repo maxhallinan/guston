@@ -13,7 +13,6 @@ run :: IO ()
 run = hspec $ do
   describe "Eval" $ do
     describe "Eval.eval" $ do
-
       describe "special forms" $ do
         describe "atom?" $ do
           it "(atom? x) evaluates to true when x is an atom" $ do
@@ -211,10 +210,12 @@ run = hspec $ do
                  , Lst [ SFrm Quote, Sym "y" ]])
             `evaluatesTo`
             (Sym "y")
-          it "((lambda (x y) y) (quote z)) fails with NumArgs" $ do
-            pending
-          it "(begin (define x (quote y)) (y (quote z))) fails with NotFn" $ do
-            pending
+          it "(define x (quote y) (y (quote z)) fails with NotFn" $ do
+            (Lst [ Lst [ SFrm Quote , Sym "x" ]
+                 , Lst [ SFrm Quote, Sym "y" ]
+                 ])
+            `failsWith`
+            NotFn
 
       describe "variable lookup" $ do
           it "evaluating x returns the value bound to the symbol x" $ do
