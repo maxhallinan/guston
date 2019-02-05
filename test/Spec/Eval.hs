@@ -144,26 +144,22 @@ run = hspec $ do
             NumArgs
 
         describe "eq?" $ do
-          it "(eq x y) returns true if x and y are equivalent symbols" $ do
+          it "(eq x y) evaluates to true if x and y are equivalent symbols" $ do
             (Lst [SFrm IsEq, Sym "x", Sym "x"])
             `evaluatesTo`
             (Sym "true")
-          it "(eq x y) returns false if x and y are not equivalent symbols" $ do
+          it "(eq x y) evaluates to false if x and y are not equivalent symbols" $ do
             (Lst [SFrm IsEq, Sym "x", Sym "y"])
             `evaluatesTo`
             (Sym "false")
-          it "(eq x y) fails with WrongTipe if x is not a symbol" $ do
-            (Lst [SFrm IsEq, Lst [], Sym "y"])
-            `failsWith`
-            WrongTipe
-          it "(eq x y) fails with WrongTipe if y is not a symbol" $ do
-            (Lst [SFrm IsEq, Sym "y", Lst []])
-            `failsWith`
-            WrongTipe
-          it "(eq x y) fails with WrongTipe if y is not a symbol" $ do
+          it "(eq x y) evaluates to true x and y are empty lists" $ do
             (Lst [SFrm IsEq, Lst [], Lst []])
-            `failsWith`
-            WrongTipe
+            `evaluatesTo`
+            (Sym "true")
+          it "(eq x y) evaluates to false" $ do
+            (Lst [SFrm IsEq, Lst [ Sym "x" ], Lst [ Sym "x" ]])
+            `evaluatesTo`
+            (Sym "false")
           it "(eq x) fails with NumArgs" $ do
             (Lst [SFrm IsEq, Sym "x"])
             `failsWith`

@@ -64,7 +64,8 @@ evalIsEq [Sym x, Sym y] =
   if x == y
   then return $ Right $ Sym "true"
   else return $ Right $ Sym "false"
-evalIsEq [_,_] = return $ Left WrongTipe
+evalIsEq [Lst [], Lst []] = return $ Right $ Sym "true"
+evalIsEq [_,_] = return $ Right $ Sym "false"
 evalIsEq _     = return $ Left NumArgs
 
 evalCar :: [Sexpr] -> Eval (Either EvalErr Sexpr)
