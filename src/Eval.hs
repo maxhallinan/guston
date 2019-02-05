@@ -103,15 +103,15 @@ evalCond (Lst _:_)  = return $ Left NotPair
 evalCond (_:_)      = return $ Left WrongTipe
 
 evalDef :: [Sexpr] -> Eval (Either EvalErr Sexpr)
-evalDef [Sym key, expr, body] = do
+evalDef [Sym key, expr] = do
   val <- eval expr
   case val of
     (Right x) -> do
       env <- S.get
       _   <- S.put (M.insert key x env)
-      eval body
+      return val
     _ -> return val
-evalDef [_,_,_] = return $ Left WrongTipe
+evalDef [_,_] = return $ Left WrongTipe
 evalDef _       = return $ Left NumArgs
 
 evalLambda :: [Sexpr] -> Eval (Either EvalErr Sexpr)

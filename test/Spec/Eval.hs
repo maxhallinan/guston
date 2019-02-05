@@ -10,7 +10,7 @@ import Test.QuickCheck.Instances.Char (lowerAlpha, numeric, upperAlpha)
 import Test.QuickCheck.Gen (oneof, listOf)
 import qualified Test.QuickCheck.Monadic as Monadic
 
-import Syntax (Sexpr(..), SpecialForm(..), defaultEnv)
+import Syntax (Env, Sexpr(..), SpecialForm(..), defaultEnv)
 import Eval (EvalErr(..), eval, runEval)
 
 run :: IO ()
@@ -121,24 +121,13 @@ run = hspec $ do
             (Lst [ SFrm Def
                  , Sym "foo"
                  , Lst [ SFrm Quote, Sym "x" ]
-                 , Sym "foo" ])
+                 ])
             `insertsInEnv`
             ("foo", Sym "x")
-          it "(define foo y) overrides the value bound to an existing symbol foo" $ do
-            (Lst [ SFrm Def
-                 , Sym "foo"
-                 , Lst [ SFrm Quote, Sym "x" ]
-                 , Lst [ SFrm Def
-                       , Sym "foo"
-                       , Lst [ SFrm Quote, Sym "y" ]
-                       , Sym "foo" ]])
-            `insertsInEnv`
-            ("foo", Sym "y")
           it "(define '(x) 'x 'y) fails with WrongTipe" $ do
             (Lst [ SFrm Def
                  , Lst [ SFrm Quote, Lst [ Sym "x" ] ]
                  , Lst [ SFrm Quote, Sym "x" ]
-                 , Sym "x"
                  ])
             `failsWith`
             WrongTipe
@@ -150,27 +139,27 @@ run = hspec $ do
             NumArgs
 
         describe "eq?" $ do
-          it "(eq x y) evaluates to true if x and y are equivalent symbols" $ do
+          it "(eq? x y) evaluates to true if x and y are equivalent symbols" $ do
             (Lst [SFrm IsEq, Sym "x", Sym "x"])
             `evaluatesTo`
             (Sym "true")
-          it "(eq x y) evaluates to false if x and y are not equivalent symbols" $ do
+          it "(eq? x y) evaluates to false if x and y are not equivalent symbols" $ do
             (Lst [SFrm IsEq, Sym "x", Sym "y"])
             `evaluatesTo`
             (Sym "false")
-          it "(eq x y) evaluates to true x and y are empty lists" $ do
+          it "(eq? x y) evaluates to true x and y are empty lists" $ do
             (Lst [SFrm IsEq, Lst [], Lst []])
             `evaluatesTo`
             (Sym "true")
-          it "(eq x y) evaluates to false" $ do
+          it "(eq? x y) evaluates to false" $ do
             (Lst [SFrm IsEq, Lst [ Sym "x" ], Lst [ Sym "x" ]])
             `evaluatesTo`
             (Sym "false")
-          it "(eq x) fails with NumArgs" $ do
+          it "(eq? x) fails with NumArgs" $ do
             (Lst [SFrm IsEq, Sym "x"])
             `failsWith`
             NumArgs
-          it "(eq x y z) fails with NumArgs" $ do
+          it "(eq? x y z) fails with NumArgs" $ do
             (Lst [SFrm IsEq, Sym "x", Sym "y", Sym "z"])
             `failsWith`
             NumArgs
@@ -219,14 +208,19 @@ run = hspec $ do
 
       describe "variable lookup" $ do
           it "evaluating x returns the value bound to the symbol x" $ do
-            (Lst [ SFrm Def
-                 , Sym "foo"
-                 , Lst [ SFrm Quote, Sym "x" ]
-                 , Sym "foo" ])
-            `evaluatesTo`
-            (Sym "x")
+            inEnvEvaluatesTo
+              (M.fromList [("foo", Sym "x")] <> defaultEnv)
+              (Sym "foo")
+              (Sym "x")
           it "evaluating x throws an unknown variable exception when no value is bound to x" $ do
             (Sym "x") `failsWith` UnknownVar
+
+inEnvEvaluatesTo :: Env -> Sexpr -> Sexpr -> Expectation
+inEnvEvaluatesTo env expr expected = do
+  (result, _) <- runStateT (runEval . eval $ expr) env
+  case result of
+    (Right actual)  -> actual `shouldBe` expected
+    (Left err)      -> assertFailure (show err)
 
 evaluatesTo :: Sexpr -> Sexpr -> Expectation
 evaluatesTo expr expected = do
