@@ -13,7 +13,7 @@ type Parser = Mega.Parsec Void String
 
 type ParseError = Err.ParseErrorBundle String Void
 
-parseFile :: String -> String -> Either ParseError S.Sexpr
+parseFile :: String -> String -> Either ParseError [S.Sexpr]
 parseFile filename = Mega.parse (contents program) filename
 
 parseStr :: String -> Either ParseError S.Sexpr
@@ -22,8 +22,8 @@ parseStr = Mega.parse (contents sexpr) ""
 contents :: Parser a -> Parser a
 contents p = between space Mega.eof p
 
-program :: Parser S.Sexpr
-program = S.Lst <$> Mega.sepBy sexpr space
+program :: Parser [S.Sexpr]
+program = Mega.sepBy sexpr space
 
 sexpr :: Parser S.Sexpr
 sexpr = lexeme (atom <|> list)

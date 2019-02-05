@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Eval (EvalErr(..), eval, runEval) where
+module Eval (EvalErr(..), eval, evalFile, runEval) where
 
 import Control.Monad.IO.Class
 import qualified Control.Monad.State as S
@@ -19,11 +19,14 @@ data EvalErr
   = NumArgs
   | WrongTipe
   | LstLength
-  | UnknownVar
+  | UnknownVar String
   | NotFn
   | Unknown
   | NotPair
   deriving (Eq, Show)
+
+evalFile :: [Sexpr] -> Eval [Either EvalErr Sexpr]
+evalFile xs = sequence $ eval <$> xs
 
 eval :: Sexpr -> Eval (Either EvalErr Sexpr)
 eval sexpr = do
@@ -31,14 +34,14 @@ eval sexpr = do
     (Sym name)             -> evalSym name
     (Lst (SFrm sfrm:args)) -> evalSFrm sfrm args
     (Lst xs)               -> evalLst xs
-    _                      -> return $ Left Unknown
+    _                      -> return $ Left $ Unknown
 
 evalSym :: String -> Eval (Either EvalErr Sexpr)
 evalSym name = do
   env <- S.get
   case M.lookup name env of
     Just val  -> return $ Right $ val
-    Nothing   -> return $ Left UnknownVar
+    Nothing   -> return $ Left $ UnknownVar name
 
 evalSFrm :: SpecialForm -> [Sexpr] -> Eval (Either EvalErr Sexpr)
 evalSFrm _ [] = return $ Left NumArgs
@@ -70,24 +73,33 @@ evalIsEq [_,_] = return $ Right $ Sym "false"
 evalIsEq _     = return $ Left NumArgs
 
 evalCar :: [Sexpr] -> Eval (Either EvalErr Sexpr)
-evalCar [Lst []]    = return $ Left LstLength
-evalCar [Lst (x:_)] = return $ Right x
-evalCar _           = return $ Left WrongTipe
+evalCar [x] = do
+  e <- eval x
+  case e of
+    Right (Lst [])      -> return $ Left $ LstLength
+    Right (Lst (y:_))   -> return $ Right $ y
+    Right _             -> return $ Left WrongTipe
+    Left _              -> return e
+evalCar _ = return $ Left NumArgs
 
 evalCdr :: [Sexpr] -> Eval (Either EvalErr Sexpr)
-evalCdr [Lst []]      = return $ Left $ LstLength
-evalCdr [Lst (_:xs)]  = return $ Right $ Lst xs
-evalCdr _             = return $ Left WrongTipe
+evalCdr [x] = do
+  e <- eval x
+  case e of
+    Right (Lst [])      -> return $ Right $ Lst []
+    Right (Lst (_:ys))  -> return $ Right $ Lst ys
+    Right _             -> return $ Left WrongTipe
+    Left _              -> return e
+evalCdr _ = return $ Left NumArgs
 
 evalCons :: [Sexpr] -> Eval (Either EvalErr Sexpr)
-evalCons [x, Lst xs]  = do
+evalCons [x, xs]  = do
   e1 <- eval x
-  e2 <- eval $ Lst xs
+  e2 <- eval xs
   case (e1, e2) of
     (Right y, Right (Lst ys)) -> return $ Right $ Lst (y:ys)
     (Right _, Right _)        -> return $ Left WrongTipe
-    _                         -> return $ Left Unknown
-evalCons [_, _] = return $ Left WrongTipe
+    _                         -> return $ Left $ Unknown
 evalCons _      = return $ Left NumArgs
 
 evalCond :: [Sexpr] -> Eval (Either EvalErr Sexpr)
@@ -111,7 +123,7 @@ evalDef [Sym key, expr] = do
       _   <- S.put (M.insert key x env)
       return val
     _ -> return val
-evalDef [_,_] = return $ Left WrongTipe
+evalDef [_,_]   = return $ Left WrongTipe
 evalDef _       = return $ Left NumArgs
 
 evalLambda :: [Sexpr] -> Eval (Either EvalErr Sexpr)
@@ -131,8 +143,8 @@ evalLst (x:xs) = do
   fn   <- eval x
   args <- traverse eval xs
   case (fn, traverse id args) of
-    (Right (Fn env params body), Right args') -> do
-      let env' = M.fromList (zipWith (\(Sym k) v -> (k, v)) params args') <> env
+    (Right (Fn closure params body), Right args') -> do
+      let env' = M.fromList (zipWith (\(Sym k) v -> (k, v)) params args') <> closure
       Eval $ S.withStateT (const env') (runEval . eval $ body)
     (Right _, _)  -> return $ Left NotFn
     (Left err, _) -> return $ Left err

@@ -9,7 +9,6 @@ import Test.QuickCheck (Arbitrary, Gen, Property, arbitrary, elements, property,
 import Test.QuickCheck.Instances.Char (lowerAlpha, numeric, upperAlpha)
 import Test.QuickCheck.Gen (oneof, listOf)
 import qualified Test.QuickCheck.Monadic as Monadic
-
 import Syntax (Env, Sexpr(..), SpecialForm(..), defaultEnv)
 import Eval (EvalErr(..), eval, runEval)
 
@@ -32,21 +31,43 @@ run = hspec $ do
 
         describe "car" $ do
           it "(car xs) returns the first item in xs" $ do
-            (Lst [SFrm Car, Lst [Sym "x"]]) `evaluatesTo` (Sym "x")
+            (Lst [ SFrm Car
+                 , Lst [ SFrm Quote, Lst [Sym "x"] ]
+                 ])
+            `evaluatesTo`
+            (Sym "x")
           it "(car xs) fails with WrongTipe if xs is not a list" $ do
-            (Lst [SFrm Car, Sym "x"]) `failsWith` WrongTipe
+            (Lst [ SFrm Car
+                 , Lst [ SFrm Quote, Sym "x" ]
+                 ])
+            `failsWith`
+            WrongTipe
           it "(car xs) fails with LstLength if xs is an empty list" $ do
-            (Lst [SFrm Car, Lst []]) `failsWith` LstLength
+            (Lst [SFrm Car
+                 , Lst [ SFrm Quote, Lst [] ]
+                 ])
+            `failsWith`
+            LstLength
 
         describe "cdr" $ do
           it "(cdr xs) returns the tail of xs" $ do
-            (Lst [SFrm Cdr, Lst [Sym "x", Sym "y", Sym "z"]])
+            (Lst [ SFrm Cdr
+                 , Lst [ SFrm Quote, Lst [Sym "x", Sym "y", Sym "z"] ]
+                 ])
             `evaluatesTo`
             (Lst [Sym "y", Sym "z"])
           it "(cdr xs) returns an empty list if xs is empty" $ do
-            (Lst [SFrm Cdr, Lst []]) `failsWith` LstLength
+            (Lst [ SFrm Cdr
+                 , Lst [ SFrm Quote, Lst [] ]
+                 ])
+            `evaluatesTo`
+            (Lst [])
           it "(car xs) throws an exception if xs is not a list" $ do
-            (Lst [SFrm Cdr, Sym "foo"]) `failsWith` WrongTipe
+            (Lst [ SFrm Cdr
+                 , Lst [ SFrm Quote, Sym "foo" ]
+                 ])
+            `failsWith`
+            WrongTipe
 
         describe "cond" $ do
           it "(cond cs) returns the value of the first true condition in cs" $ do
@@ -213,7 +234,7 @@ run = hspec $ do
               (Sym "foo")
               (Sym "x")
           it "evaluating x throws an unknown variable exception when no value is bound to x" $ do
-            (Sym "x") `failsWith` UnknownVar
+            (Sym "x") `failsWith` (UnknownVar "x")
 
 inEnvEvaluatesTo :: Env -> Sexpr -> Sexpr -> Expectation
 inEnvEvaluatesTo env expr expected = do

@@ -16,21 +16,21 @@ run = hspec $ do
     describe "Parse.parseFile" $ do
       describe "special forms" $ do
         it "parses atom?" $ do
-          "atom?" `parsesFileTo` (Lst [SFrm IsAtm])
+          "atom?" `parsesFileTo` [SFrm IsAtm]
         it "parses car" $ do
-          "car" `parsesFileTo` (Lst [SFrm Car])
+          "car" `parsesFileTo` [SFrm Car]
         it "parses cdr" $ do
-          "cdr" `parsesFileTo` (Lst [SFrm Cdr])
+          "cdr" `parsesFileTo` [SFrm Cdr]
         it "parses cns" $ do
-          "cons" `parsesFileTo` (Lst [SFrm Cons])
+          "cons" `parsesFileTo` [SFrm Cons]
         it "parses define" $ do
-          "define" `parsesFileTo` (Lst [SFrm Def])
+          "define" `parsesFileTo` [SFrm Def]
         it "parses eq?" $ do
-          "eq?" `parsesFileTo` (Lst [SFrm IsEq])
+          "eq?" `parsesFileTo` [SFrm IsEq]
         it "parses lambda" $ do
-          "lambda" `parsesFileTo` (Lst [SFrm Lambda])
+          "lambda" `parsesFileTo` [SFrm Lambda]
         it "parses quote" $ do
-          "quote" `parsesFileTo` (Lst [SFrm Quote])
+          "quote" `parsesFileTo` [SFrm Quote]
 
       describe "symbol" $ do
         it "parses a symbol" $ do
@@ -69,7 +69,7 @@ run = hspec $ do
         it "parses a list" $ do
           property prop_parseStr_List
 
-parsesFileTo :: String -> Sexpr -> Expectation
+parsesFileTo :: String -> [Sexpr] -> Expectation
 parsesFileTo file sexpr =
   case parseFile "" file of
     Right result  -> result `shouldBe` sexpr
@@ -84,12 +84,12 @@ parsesStrTo str sexpr =
 prop_parseFile_Sym :: ArbSym -> Bool
 prop_parseFile_Sym (ArbSym s) = result == Right expected
   where result    = parseFile "" s
-        expected  = Lst [Sym s]
+        expected  = [Sym s]
 
 prop_parseFile_List :: ArbLst -> Bool
 prop_parseFile_List (ArbLst l) =
   case parseFile "" l of
-    Right (Lst [Lst _]) ->
+    Right [Lst _] ->
       True
     _ ->
       False

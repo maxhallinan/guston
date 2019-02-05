@@ -50,6 +50,7 @@ test-suite golden
                       , bytestring
                       , filepath
                       , Glob
+                      , mtl
                       , tasty
                       , tasty-golden
   default-language:     Haskell2010
