@@ -55,9 +55,10 @@ evalSFrm sfrm args = do
     Quote   -> evalQuote args
 
 evalIsAtm :: [Sexpr] -> Eval (Either EvalErr Sexpr)
-evalIsAtm [Sym _] = return $ Right $ Sym "true"
-evalIsAtm [_]     = return $ Right $ Sym "false"
-evalIsAtm _       = return $ Left NumArgs
+evalIsAtm [Sym _]   = return $ Right $ Sym "true"
+evalIsAtm [Lst []]  = return $ Right $ Sym "true"
+evalIsAtm [Lst _]   = return $ Right $ Sym "false"
+evalIsAtm _         = return $ Left NumArgs
 
 evalIsEq :: [Sexpr] -> Eval (Either EvalErr Sexpr)
 evalIsEq [Sym x, Sym y] =

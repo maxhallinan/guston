@@ -21,8 +21,10 @@ run = hspec $ do
         describe "atom?" $ do
           it "(atom? x) evaluates to true when x is an atom" $ do
             (Lst [SFrm IsAtm, Sym "x"]) `evaluatesTo` (Sym "true")
-          it "(atom? x) evaluates to false when x is not an atom" $ do
-            (Lst [SFrm IsAtm, Lst []])
+          it "(atom? x) evaluates to true when x is an empty list" $ do
+            (Lst [SFrm IsAtm, Lst []]) `evaluatesTo` (Sym "true")
+          it "(atom? x) evaluates to false when x is a non-empty list" $ do
+            (Lst [SFrm IsAtm, Lst [ Sym "foo" ]])
             `evaluatesTo`
             (Sym "false")
           it "(atom? x y) fails with NumArgs" $ do
