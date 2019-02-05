@@ -2,9 +2,13 @@ module Spec.Eval (run) where
 
 import Control.Monad.State (runStateT)
 import qualified Data.Map as M
-import Test.Hspec (hspec, describe, it, pending, shouldBe)
+import Test.Hspec (hspec, describe, it, shouldBe)
 import Test.Hspec.Expectations (Expectation)
 import Test.HUnit.Lang (assertFailure)
+import Test.QuickCheck (Arbitrary, Gen, Property, arbitrary, elements, property, resize)
+import Test.QuickCheck.Instances.Char (lowerAlpha, numeric, upperAlpha)
+import Test.QuickCheck.Gen (oneof, listOf)
+import qualified Test.QuickCheck.Monadic as Monadic
 
 import Syntax (Sexpr(..), SpecialForm(..), defaultEnv)
 import Eval (EvalErr(..), eval, runEval)
@@ -188,10 +192,8 @@ run = hspec $ do
             WrongTipe
 
         describe "quote" $ do
-          it "(quote (x, y)) evaluates to (x y)" $ do
-            (Lst [SFrm Quote, Lst [Sym "x", Sym "y"]])
-            `evaluatesTo`
-            (Lst [Sym "x", Sym "y"])
+          it "(quote <lisp expression>) evaluates to <lisp expression>" $ do
+            property prop_eval_quote
           it "(quote x) evaluates to the symbol x" $ do
             (Lst [SFrm Quote, Sym "x"]) `evaluatesTo` (Sym "x")
           it "(quote x y) fails with NumArgs" $ do
@@ -244,3 +246,26 @@ insertsInEnv expr (key, expected) = do
   case M.lookup key env of
     Just actual -> actual `shouldBe` expected
     Nothing     -> assertFailure $ "Variable " ++ key ++ "not found in env"
+
+prop_eval_quote :: ArbSexpr -> Property
+prop_eval_quote (ArbSexpr sexpr) = Monadic.monadicIO $ do
+  (result, _) <- Monadic.run $ runStateT (runEval . eval $ (Lst [ SFrm Quote, sexpr ])) defaultEnv
+  case result of
+    (Right r) -> Monadic.assert (r == sexpr)
+    _         -> Monadic.assert False
+
+newtype ArbSexpr = ArbSexpr Sexpr deriving (Eq, Show)
+
+instance Arbitrary ArbSexpr where
+  arbitrary = ArbSexpr <$> oneof [ genSym, genSFrm, genLst ]
+
+genSym :: Gen Sexpr
+genSym = do
+  name <- listOf $ oneof [ numeric, lowerAlpha, upperAlpha ]
+  return $ Sym name
+
+genSFrm :: Gen Sexpr
+genSFrm = SFrm <$> elements [ Car , Cdr , Cons , Cond , Def , IsAtm , IsEq , Lambda , Quote ]
+
+genLst :: Gen Sexpr
+genLst = Lst <$> (listOf $ oneof [ genSym, genSFrm, resize 2 genLst ])
