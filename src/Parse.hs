@@ -39,7 +39,10 @@ list = do
   return $ S.Lst exprs
 
 specialForm :: Parser S.Sexpr
-specialForm = S.SFrm <$> (car <|> cdr <|> cons <|> cond <|> def <|> isAtm <|> isEq <|> lambda <|> quote)
+specialForm = S.SFrm <$> (begin <|> car <|> cdr <|> cons <|> cond <|> def <|> isAtm <|> isEq <|> lambda <|> quote)
+
+begin :: Parser S.SpecialForm 
+begin = Char.string "begin" >> return S.Begin
 
 car :: Parser S.SpecialForm
 car = Char.string "car" >> return S.Car

@@ -15,7 +15,8 @@ defaultEnv :: Env
 defaultEnv = M.empty
 
 data SpecialForm =
-    Car
+    Begin
+  | Car
   | Cdr
   | Cons
   | Cond

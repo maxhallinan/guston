@@ -23,6 +23,16 @@ run = hspec $ do
             (Sym "false")
           it "(atom? x y) fails with NumArgs" $ do
             (Lst [SFrm IsAtm, Sym "x", Sym "y"]) `failsWith` NumArgs
+        
+        describe "begin" $ do
+          it "(begin (define foo (quote bar)) foo) evaluates to bar" $ do
+            (Lst [ SFrm Begin
+                 , Lst [ SFrm Def
+                       , Sym "foo"
+                       , Lst [ SFrm Quote, Sym "bar" ]]
+                 , Sym "foo"]) 
+            `evaluatesTo` 
+            (Sym "bar")
 
         describe "car" $ do
           it "(car xs) returns the first item in xs" $ do

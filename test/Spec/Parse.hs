@@ -17,6 +17,8 @@ run = hspec $ do
       describe "special forms" $ do
         it "parses atom?" $ do
           "atom?" `parsesFileTo` (Lst [SFrm IsAtm])
+        it "parses begin" $ do
+          "begin" `parsesFileTo` (Lst [SFrm Begin])
         it "parses car" $ do
           "car" `parsesFileTo` (Lst [SFrm Car])
         it "parses cdr" $ do
@@ -44,6 +46,8 @@ run = hspec $ do
       describe "special forms" $ do
         it "parses atom?" $ do
           "atom?" `parsesStrTo` (SFrm IsAtm)
+        it "parses begin" $ do
+          "begin" `parsesStrTo` (SFrm Begin)
         it "parses car" $ do
           "car" `parsesStrTo` (SFrm Car)
         it "parses cdr" $ do

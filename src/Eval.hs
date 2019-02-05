@@ -44,6 +44,7 @@ evalSFrm :: SpecialForm -> [Sexpr] -> Eval (Either EvalErr Sexpr)
 evalSFrm _ [] = return $ Left NumArgs
 evalSFrm sfrm args = do
   case sfrm of
+    Begin   -> evalBegin args
     Car     -> evalCar args
     Cdr     -> evalCdr args
     Cond    -> evalCond args
@@ -53,6 +54,14 @@ evalSFrm sfrm args = do
     IsEq    -> evalIsEq args
     Lambda  -> evalLambda args
     Quote   -> evalQuote args
+
+evalBegin :: [Sexpr] -> Eval (Either EvalErr Sexpr)
+evalBegin []      = return $ Left NumArgs
+evalBegin (x:xs)  = case xs of
+    []  -> eval x
+    _   -> do
+      _ <- eval x
+      evalBegin xs
 
 evalIsAtm :: [Sexpr] -> Eval (Either EvalErr Sexpr)
 evalIsAtm [Sym _] = return $ Right $ Sym "true"
