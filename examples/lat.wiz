@@ -1,5 +1,5 @@
 ; lat? evaluates to true if xs is a list of atoms, otherwise false
-; borrowed from The Little Schemer by Daniel P. Friedman and Matthias Felleisen
+; from The Little Schemer by Daniel P. Friedman and Matthias Felleisen
 (define lat? 
   (lambda 
     (xs) 

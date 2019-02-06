@@ -1,0 +1,11 @@
+; member? evaluates to true if the atom x is in the list xs, otherwise false
+; from The Little Schemer by Daniel P. Friedman and Matthias Felleisen
+(define member? 
+  (lambda (x xs) 
+    (cond 
+      ((eq? xs (quote ())) (quote false)) 
+      ((quote true) (cond 
+        ((eq? x (car xs)) (quote true)) 
+        ((quote true) (member? x (cdr xs))))))))
+
+(member? (quote c) (quote (a b c)))
