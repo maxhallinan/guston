@@ -14,7 +14,6 @@ import Syntax (defaultEnv)
 main :: IO ()
 main = do
   paths <- globDir1 (compile "*.wiz") "examples"
-  putStrLn $ show (replaceDirectory "golden-files" <$> paths)
   files <- traverse readSourceFile paths
   T.defaultMain $ T.testGroup "golden tests" $ runTest <$> files
 
