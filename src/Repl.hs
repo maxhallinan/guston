@@ -10,7 +10,7 @@ import qualified Syntax as S
 
 run :: IO ()
 run = do
-  putStrLn "Welcome"
+  putStrLn "Welcome to Wiz v0.1"
   H.runInputT H.defaultSettings (loop S.defaultEnv)
 
 loop :: S.Env -> H.InputT IO ()
@@ -33,9 +33,9 @@ evalInEnv :: S.Env -> String -> IO (Either String (S.Sexpr, S.Env))
 evalInEnv env str = do
   case P.parseStr str of
     Right sexpr -> do
-      (result, env') <- run (E.eval sexpr) env
+      (result, env') <- run' (E.eval sexpr) env
       case result of
         Left err  -> return $ Left $ show err
         Right x   -> return $ Right (x, env')
     Left parseErr -> return $ Left $ show parseErr
-  where run = runStateT . E.runEval
+  where run' = runStateT . E.runEval
