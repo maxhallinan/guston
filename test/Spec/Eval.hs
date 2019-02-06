@@ -161,19 +161,31 @@ run = hspec $ do
 
         describe "eq?" $ do
           it "(eq? x y) evaluates to true if x and y are equivalent symbols" $ do
-            (Lst [SFrm IsEq, Sym "x", Sym "x"])
+            (Lst [ SFrm IsEq
+                 , Lst [ SFrm Quote, Sym "x" ]
+                 , Lst [ SFrm Quote, Sym "x" ]
+                 ])
             `evaluatesTo`
             (Sym "true")
           it "(eq? x y) evaluates to false if x and y are not equivalent symbols" $ do
-            (Lst [SFrm IsEq, Sym "x", Sym "y"])
+            (Lst [ SFrm IsEq
+                 , Lst [ SFrm Quote, Sym "x" ]
+                 , Lst [ SFrm Quote, Sym "y" ]
+                 ])
             `evaluatesTo`
             (Sym "false")
           it "(eq? x y) evaluates to true x and y are empty lists" $ do
-            (Lst [SFrm IsEq, Lst [], Lst []])
+            (Lst [ SFrm IsEq
+                 , Lst [ SFrm Quote, Lst [] ]
+                 , Lst [ SFrm Quote, Lst [] ]
+                 ])
             `evaluatesTo`
             (Sym "true")
           it "(eq? x y) evaluates to false" $ do
-            (Lst [SFrm IsEq, Lst [ Sym "x" ], Lst [ Sym "x" ]])
+            (Lst [ SFrm IsEq
+                 , Lst [ SFrm Quote, Lst [ Sym "x" ] ]
+                 , Lst [ SFrm Quote, Lst [ Sym "x" ] ]
+                 ])
             `evaluatesTo`
             (Sym "false")
           it "(eq? x) fails with NumArgs" $ do

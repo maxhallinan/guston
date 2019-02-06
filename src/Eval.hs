@@ -64,12 +64,18 @@ evalIsAtm [Lst _]   = return $ Right $ Sym "false"
 evalIsAtm _         = return $ Left NumArgs
 
 evalIsEq :: [Sexpr] -> Eval (Either EvalErr Sexpr)
-evalIsEq [Sym x, Sym y] =
-  if x == y
-  then return $ Right $ Sym "true"
-  else return $ Right $ Sym "false"
-evalIsEq [Lst [], Lst []] = return $ Right $ Sym "true"
-evalIsEq [_,_] = return $ Right $ Sym "false"
+evalIsEq [x, y] = do
+  x' <- eval x
+  y' <- eval y
+  case (x', y') of
+    (Right (Sym name1), Right (Sym name2)) ->
+      if name1 == name2
+      then return $ Right $ Sym "true"
+      else return $ Right $ Sym "false"
+    (Right (Lst []), Right (Lst [])) -> return $ Right $ Sym "true"
+    (Right _, Right _)  -> return $ Right $ Sym "false"
+    (Left err, _)       -> return $ Left err
+    (_, Left err)       -> return $ Left err
 evalIsEq _     = return $ Left NumArgs
 
 evalCar :: [Sexpr] -> Eval (Either EvalErr Sexpr)
@@ -141,10 +147,20 @@ evalLst :: [Sexpr] -> Eval (Either EvalErr Sexpr)
 evalLst [] = return $ Left NumArgs
 evalLst (x:xs) = do
   fn   <- eval x
-  args <- traverse eval xs
-  case (fn, traverse id args) of
-    (Right (Fn closure params body), Right args') -> do
-      let env' = M.fromList (zipWith (\(Sym k) v -> (k, v)) params args') <> closure
+  case fn of
+    Right (Fn localEnv params body) -> do
+      globalEnv <- S.get
+      let env = localEnv <> globalEnv
+      Eval $ S.withStateT (const env) (runEval $ applyLambda params xs body)
+    Right _  -> return $ Left NotFn
+    Left err -> return $ Left err
+
+applyLambda :: [Sexpr] -> [Sexpr] -> Sexpr -> Eval (Either EvalErr Sexpr)
+applyLambda params args body = do
+  env <- S.get
+  args' <- traverse eval args
+  case traverse id args' of
+    (Right xs) -> do
+      let env' = M.fromList (zipWith (\(Sym k) v -> (k, v)) params xs) <> env
       Eval $ S.withStateT (const env') (runEval . eval $ body)
-    (Right _, _)  -> return $ Left NotFn
-    (Left err, _) -> return $ Left err
+    (Left err) -> return $ Left err
