@@ -19,15 +19,30 @@ run = hspec $ do
       describe "special forms" $ do
         describe "atom?" $ do
           it "(atom? x) evaluates to true when x is an atom" $ do
-            (Lst [SFrm IsAtm, Sym "x"]) `evaluatesTo` (Sym "true")
+            (Lst [ SFrm IsAtm
+                 , Lst [ SFrm Quote, Sym "x" ]
+                 ])
+            `evaluatesTo`
+            (Sym "true")
           it "(atom? x) evaluates to true when x is an empty list" $ do
-            (Lst [SFrm IsAtm, Lst []]) `evaluatesTo` (Sym "true")
+            (Lst [ SFrm IsAtm
+                 , Lst [ SFrm Quote, Lst [] ]
+                 ])
+            `evaluatesTo`
+            (Sym "true")
           it "(atom? x) evaluates to false when x is a non-empty list" $ do
-            (Lst [SFrm IsAtm, Lst [ Sym "foo" ]])
+            (Lst [ SFrm IsAtm
+                 , Lst [ SFrm Quote, Lst [ Sym "foo" ] ]
+                 ])
             `evaluatesTo`
             (Sym "false")
           it "(atom? x y) fails with NumArgs" $ do
-            (Lst [SFrm IsAtm, Sym "x", Sym "y"]) `failsWith` NumArgs
+            (Lst [ SFrm IsAtm
+                 , Lst [ SFrm Quote, Sym "x" ]
+                 , Lst [ SFrm Quote, Sym "y" ]
+                 ])
+            `failsWith`
+            NumArgs
 
         describe "car" $ do
           it "(car xs) returns the first item in xs" $ do
