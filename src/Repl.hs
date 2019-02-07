@@ -30,12 +30,11 @@ loop env = do
   case mInput of
     Nothing     -> H.outputStrLn "Goodbye"
     Just ""     -> loop env
-    Just input  -> do
-      case parseReplCmd input of
-        Just (Eval wizStr)   -> runEvalCmd env wizStr
-        Just (Load filenames) -> runLoadCmd env filenames
-        Just Quit             -> runQuitCmd
-        Nothing               -> runUnknownCmd env input
+    Just cmd    -> case parseReplCmd cmd of
+      Just (Eval wizStr)    -> runEvalCmd env wizStr
+      Just (Load filepaths) -> runLoadCmd env filepaths
+      Just Quit             -> runQuitCmd
+      Nothing               -> runUnknownCmd env cmd
 
 runEvalCmd :: S.Env -> String -> H.InputT IO ()
 runEvalCmd env wizStr = do
@@ -49,16 +48,36 @@ runEvalCmd env wizStr = do
           loop env'
 
 runLoadCmd :: S.Env -> [String] -> H.InputT IO ()
-runLoadCmd env _ = do
-  -- todo: implement the load command
-  loop env
+runLoadCmd env filepaths = do
+  files   <- liftIO $ traverse readFile filepaths
+  result  <- liftIO $ loadFiles env (zip filepaths files)
+  case result of
+    Left (errMsg, env') -> do
+      H.outputStrLn errMsg
+      loop env'
+    Right env' -> do
+      loop env'
+
+loadFiles :: S.Env -> [(String, String)] -> IO (Either (String, S.Env) S.Env)
+loadFiles env [] = return $ Right env
+loadFiles env ((filepath, file):files) = do
+  case P.parseFile filepath file of
+    Left parseErr -> return $ Left (show parseErr, env)
+    Right sexpr   -> do
+      (result, env') <- run' (E.evalFile sexpr) env
+      case traverse id result of
+        Left evalErr -> return $ Left (show evalErr, env')
+        Right _      -> do
+          putStrLn $ "Loaded " ++ filepath
+          loadFiles env' files
+  where run' = runStateT . E.runEval
 
 runQuitCmd :: H.InputT IO ()
 runQuitCmd = H.outputStrLn "Goodbye"
 
 runUnknownCmd :: S.Env -> String -> H.InputT IO ()
-runUnknownCmd env str = do
-  H.outputStrLn $ "Unknown command: \"" ++ str ++ "\""
+runUnknownCmd env cmd = do
+  H.outputStrLn $ "Unknown command: \"" ++ cmd ++ "\""
   loop env
 
 evalInEnv :: S.Env -> String -> IO (Either String (S.Sexpr, S.Env))
@@ -92,4 +111,4 @@ loadCmd = do
   _ <- Char.space
   filenames  <- Mega.sepBy filename Char.space
   return $ Load filenames
-  where filename = Mega.some Mega.anySingle
+  where filename = Mega.some $ Mega.anySingleBut ' '
