@@ -1,6 +1,5 @@
-module Spec.Eval (run) where
+module Spec.Eval (runTests) where
 
-import Control.Monad.State (runStateT)
 import qualified Data.Map as M
 import Test.Hspec (hspec, describe, it, shouldBe)
 import Test.Hspec.Expectations (Expectation)
@@ -10,10 +9,10 @@ import Test.QuickCheck.Instances.Char (lowerAlpha, numeric, upperAlpha)
 import Test.QuickCheck.Gen (oneof, listOf)
 import qualified Test.QuickCheck.Monadic as Monadic
 import Syntax (Env, Sexpr(..), SpecialForm(..), defaultEnv)
-import Eval (EvalErr(..), eval, runEval)
+import Eval (EvalErr(..), run)
 
-run :: IO ()
-run = hspec $ do
+runTests :: IO ()
+runTests = hspec $ do
   describe "Eval" $ do
     describe "Eval.eval" $ do
       describe "special forms" $ do
@@ -265,35 +264,35 @@ run = hspec $ do
 
 inEnvEvaluatesTo :: Env -> Sexpr -> Sexpr -> Expectation
 inEnvEvaluatesTo env expr expected = do
-  (result, _) <- runStateT (runEval . eval $ expr) env
+  (result, _) <- Eval.run env expr
   case result of
     (Right actual)  -> actual `shouldBe` expected
     (Left err)      -> assertFailure (show err)
 
 evaluatesTo :: Sexpr -> Sexpr -> Expectation
 evaluatesTo expr expected = do
-  (result, _) <- runStateT (runEval . eval $ expr) defaultEnv
+  (result, _) <- Eval.run defaultEnv expr
   case result of
     (Right actual)  -> actual `shouldBe` expected
     (Left err)      -> assertFailure (show err)
 
 failsWith :: Sexpr -> EvalErr -> Expectation
 failsWith expr expected = do
-  (result, _) <- runStateT (runEval . eval $ expr) defaultEnv
+  (result, _) <- Eval.run defaultEnv expr
   case result of
     (Right x)     -> assertFailure $ "expected evaluation to fail but received: " ++ (show x)
     (Left actual) -> actual `shouldBe` expected
 
 insertsInEnv :: Sexpr -> (String, Sexpr) -> Expectation
 insertsInEnv expr (key, expected) = do
-  (_, env) <- runStateT (runEval . eval $ expr) defaultEnv
+  (_, env) <- Eval.run defaultEnv expr
   case M.lookup key env of
     Just actual -> actual `shouldBe` expected
     Nothing     -> assertFailure $ "Variable " ++ key ++ "not found in env"
 
 prop_eval_quote :: ArbSexpr -> Property
 prop_eval_quote (ArbSexpr sexpr) = Monadic.monadicIO $ do
-  (result, _) <- Monadic.run $ runStateT (runEval . eval $ (Lst [ SFrm Quote, sexpr ])) defaultEnv
+  (result, _) <- Monadic.run $ Eval.run defaultEnv (Lst [ SFrm Quote, sexpr ])
   case result of
     (Right r) -> Monadic.assert (r == sexpr)
     _         -> Monadic.assert False

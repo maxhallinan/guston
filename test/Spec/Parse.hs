@@ -1,4 +1,4 @@
-module Spec.Parse where
+module Spec.Parse (runTests) where
 
 import Test.Hspec (hspec, describe, it, shouldBe)
 import Test.Hspec.Expectations (Expectation)
@@ -10,8 +10,8 @@ import Test.QuickCheck.Instances.Char (lowerAlpha, nonSpace, numeric, upperAlpha
 import Syntax (Sexpr(..), SpecialForm(..))
 import Parse (parseStr, parseFile)
 
-run :: IO ()
-run = hspec $ do
+runTests :: IO ()
+runTests = hspec $ do
   describe "Parse" $ do
     describe "Parse.parseFile" $ do
       describe "special forms" $ do
@@ -70,15 +70,15 @@ run = hspec $ do
           property prop_parseStr_List
 
 parsesFileTo :: String -> [Sexpr] -> Expectation
-parsesFileTo file sexpr =
+parsesFileTo file expr =
   case parseFile "" file of
-    Right result  -> result `shouldBe` sexpr
+    Right result  -> result `shouldBe` expr
     Left err      -> assertFailure $ show err
 
 parsesStrTo :: String -> Sexpr -> Expectation
-parsesStrTo str sexpr =
+parsesStrTo str expr =
   case parseStr str of
-    Right result  -> result `shouldBe` sexpr
+    Right result  -> result `shouldBe` expr
     Left err      -> assertFailure $ show err
 
 prop_parseFile_Sym :: ArbSym -> Bool

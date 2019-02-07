@@ -5,5 +5,5 @@ import qualified Spec.Eval
 
 main :: IO ()
 main = do
-  Spec.Parse.run
-  Spec.Eval.run
+  Spec.Parse.runTests
+  Spec.Eval.runTests

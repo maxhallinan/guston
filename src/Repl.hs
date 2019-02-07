@@ -64,13 +64,12 @@ loadFiles env ((filepath, file):files) = do
   case P.parseFile filepath file of
     Left parseErr -> return $ Left (show parseErr, env)
     Right sexpr   -> do
-      (result, env') <- run' (E.evalFile sexpr) env
-      case traverse id result of
+      (result, env') <- E.runFile env sexpr
+      case result of
         Left evalErr -> return $ Left (show evalErr, env')
         Right _      -> do
           putStrLn $ "Loaded " ++ filepath
           loadFiles env' files
-  where run' = runStateT . E.runEval
 
 runQuitCmd :: H.InputT IO ()
 runQuitCmd = H.outputStrLn "Goodbye"
@@ -84,12 +83,11 @@ evalInEnv :: S.Env -> String -> IO (Either String (S.Sexpr, S.Env))
 evalInEnv env str = do
   case P.parseStr str of
     Right sexpr -> do
-      (result, env') <- run' (E.eval sexpr) env
+      (result, env') <- E.run env sexpr
       case result of
         Left err  -> return $ Left $ show err
         Right x   -> return $ Right (x, env')
     Left parseErr -> return $ Left $ show parseErr
-  where run' = runStateT . E.runEval
 
 type Parser = Mega.Parsec Void String
 

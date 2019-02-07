@@ -30,9 +30,10 @@ runTest (filepath, file) = G.goldenVsString filepath answerFile result
 evalFile :: String -> String -> IO String
 evalFile filepath file = do
   case parseFile filepath file of
-    Right ast -> do
-      (result, _) <- (runStateT . E.runEval) (E.evalFile ast) defaultEnv
+    Right sexpr -> do
+      (result, _) <- E.runFile defaultEnv sexpr
       case result of
-        []  -> return ""
-        _   -> return $ ((either show show) . head . reverse) result
+        Right []      -> return ""
+        Right rs      -> return $ (show . head . reverse) rs
+        Left evalErr  -> return $ show evalErr
     Left err -> return $ show err
