@@ -1,12 +1,12 @@
 ; rember replaces the first occurrence of the atom x in the list xs
 ; from The Little Schemer by Daniel P. Friedman and Matthias Felleisen
-(define rember 
-  (lambda (x xs) 
-    (cond 
-      ((eq? xs (quote ())) (quote ())) 
-      ((quote true) 
-        (cond 
-          ((eq? x (car xs)) (cdr xs)) 
-          ((quote true) (cons (car xs) (rember x (cdr xs)))))))))
+(define rember
+  (lambda (x xs)
+    (cond
+      ((eq? xs (quote ())) (quote ()))
+      ((quote t)
+        (cond
+          ((eq? x (car xs)) (cdr xs))
+          ((quote t) (cons (car xs) (rember x (cdr xs)))))))))
 
 (rember (quote b) (quote (a b c)))

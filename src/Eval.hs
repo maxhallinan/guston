@@ -61,9 +61,9 @@ evalIsAtm :: [Sexpr] -> Eval (Either EvalErr Sexpr)
 evalIsAtm [x]   = do
   y <- eval x
   case y of
-    Right (Sym _)   -> return $ Right $ Sym "true"
-    Right (Lst [])  -> return $ Right $ Sym "true"
-    Right _         -> return $ Right $ Sym "false"
+    Right (Sym _)   -> return $ Right $ Sym "t"
+    Right (Lst [])  -> return $ Right $ Sym "t"
+    Right _         -> return $ Right $ Lst []
     Left err        -> return $ Left $ err
 evalIsAtm _         = return $ Left NumArgs
 
@@ -74,10 +74,10 @@ evalIsEq [x, y] = do
   case (x', y') of
     (Right (Sym name1), Right (Sym name2)) ->
       if name1 == name2
-      then return $ Right $ Sym "true"
-      else return $ Right $ Sym "false"
-    (Right (Lst []), Right (Lst [])) -> return $ Right $ Sym "true"
-    (Right _, Right _)  -> return $ Right $ Sym "false"
+      then return $ Right $ Sym "t"
+      else return $ Right $ Lst []
+    (Right (Lst []), Right (Lst [])) -> return $ Right $ Sym "t"
+    (Right _, Right _)  -> return $ Right $ Lst []
     (Left err, _)       -> return $ Left err
     (_, Left err)       -> return $ Left err
 evalIsEq _     = return $ Left NumArgs
@@ -117,10 +117,10 @@ evalCond [] = return $ Left NumArgs
 evalCond (Lst [p, e]:cs) = do
   x <- eval p
   case x of
-    Right (Sym "true")  -> eval e
-    Right (Sym "false") -> evalCond cs
-    Right _             -> return $ Left WrongTipe
-    Left err            -> return $ Left $ err
+    Right (Sym "t") -> eval e
+    Right (Lst [])  -> evalCond cs
+    Right _         -> return $ Left WrongTipe
+    Left err        -> return $ Left $ err
 evalCond (Lst _:_)  = return $ Left NotPair
 evalCond (_:_)      = return $ Left WrongTipe
 

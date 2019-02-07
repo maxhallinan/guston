@@ -1,11 +1,11 @@
 ; lat? evaluates to true if xs is a list of atoms, otherwise false
 ; from The Little Schemer by Daniel P. Friedman and Matthias Felleisen
-(define lat? 
-  (lambda 
-    (xs) 
-    (cond 
-      ((eq? xs (quote ())) (quote true)) 
-      ((atom? (car xs)) (lat? (cdr xs))) 
-      ((quote true) (quote false)))))
+(define lat?
+  (lambda
+    (xs)
+    (cond
+      ((eq? xs (quote ())) (quote t))
+      ((atom? (car xs)) (lat? (cdr xs)))
+      ((quote t) (quote false)))))
 
 (lat? (quote (a b c)))

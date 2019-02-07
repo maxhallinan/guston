@@ -23,19 +23,19 @@ run = hspec $ do
                  , Lst [ SFrm Quote, Sym "x" ]
                  ])
             `evaluatesTo`
-            (Sym "true")
+            (Sym "t")
           it "(atom? x) evaluates to true when x is an empty list" $ do
             (Lst [ SFrm IsAtm
                  , Lst [ SFrm Quote, Lst [] ]
                  ])
             `evaluatesTo`
-            (Sym "true")
+            (Sym "t")
           it "(atom? x) evaluates to false when x is a non-empty list" $ do
             (Lst [ SFrm IsAtm
                  , Lst [ SFrm Quote, Lst [ Sym "foo" ] ]
                  ])
             `evaluatesTo`
-            (Sym "false")
+            (Lst [])
           it "(atom? x y) fails with NumArgs" $ do
             (Lst [ SFrm IsAtm
                  , Lst [ SFrm Quote, Sym "x" ]
@@ -87,10 +87,10 @@ run = hspec $ do
         describe "cond" $ do
           it "(cond cs) returns the value of the first true condition in cs" $ do
             (Lst [ SFrm Cond
-                 , Lst [ Lst [ SFrm Quote, Sym "false" ]
+                 , Lst [ Lst [ SFrm Quote, Lst [] ]
                        , Lst [ SFrm Quote, Sym "x" ]
                        ]
-                 , Lst [ Lst [ SFrm Quote, Sym "true" ]
+                 , Lst [ Lst [ SFrm Quote, Sym "t" ]
                        , Lst [ SFrm Quote, Sym "y" ]
                        ]
                  ])
@@ -181,28 +181,28 @@ run = hspec $ do
                  , Lst [ SFrm Quote, Sym "x" ]
                  ])
             `evaluatesTo`
-            (Sym "true")
+            (Sym "t")
           it "(eq? x y) evaluates to false if x and y are not equivalent symbols" $ do
             (Lst [ SFrm IsEq
                  , Lst [ SFrm Quote, Sym "x" ]
                  , Lst [ SFrm Quote, Sym "y" ]
                  ])
             `evaluatesTo`
-            (Sym "false")
+            (Lst [])
           it "(eq? x y) evaluates to true x and y are empty lists" $ do
             (Lst [ SFrm IsEq
                  , Lst [ SFrm Quote, Lst [] ]
                  , Lst [ SFrm Quote, Lst [] ]
                  ])
             `evaluatesTo`
-            (Sym "true")
+            (Sym "t")
           it "(eq? x y) evaluates to false" $ do
             (Lst [ SFrm IsEq
                  , Lst [ SFrm Quote, Lst [ Sym "x" ] ]
                  , Lst [ SFrm Quote, Lst [ Sym "x" ] ]
                  ])
             `evaluatesTo`
-            (Sym "false")
+            (Lst [])
           it "(eq? x) fails with NumArgs" $ do
             (Lst [SFrm IsEq, Sym "x"])
             `failsWith`
