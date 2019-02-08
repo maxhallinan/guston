@@ -15,7 +15,7 @@ import qualified Syntax as S
 
 run :: IO ()
 run = do
-  putStrLn "Welcome to Wiz v0.1.0"
+  putStrLn "Welcome to Guston 0.1.0"
   H.runInputT H.defaultSettings (loop S.defaultEnv)
 
 data ReplCmd =
@@ -31,14 +31,14 @@ loop env = do
     Nothing     -> H.outputStrLn "Goodbye"
     Just ""     -> loop env
     Just cmd    -> case parseReplCmd cmd of
-      Just (Eval wizStr)    -> runEvalCmd env wizStr
+      Just (Eval gustonStr)    -> runEvalCmd env gustonStr
       Just (Load filepaths) -> runLoadCmd env filepaths
       Just Quit             -> runQuitCmd
       Nothing               -> runUnknownCmd env cmd
 
 runEvalCmd :: S.Env -> String -> H.InputT IO ()
-runEvalCmd env wizStr = do
-  result <- liftIO $ evalInEnv env wizStr
+runEvalCmd env gustonStr = do
+  result <- liftIO $ evalInEnv env gustonStr
   either onError onSuccess result
   where onError errMsg = do
           H.outputStrLn errMsg

@@ -1,4 +1,4 @@
-# wiz
+# Guston
 
 A dialect of Lisp.
 
