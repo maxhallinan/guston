@@ -6,6 +6,9 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.State (runStateT)
 import Data.Void (Void)
 import qualified System.Console.Haskeline as H
+import qualified System.Console.Haskeline.Completion as H
+import qualified System.Directory as D
+import qualified System.FilePath as F
 import qualified Text.Megaparsec.Char as Char
 import qualified Text.Megaparsec as Mega
 
@@ -16,7 +19,13 @@ import qualified Syntax as S
 run :: IO ()
 run = do
   putStrLn "Welcome to Guston 0.1.0"
-  H.runInputT H.defaultSettings (loop S.defaultEnv)
+  homeDir <- D.getHomeDirectory
+  H.runInputT
+    H.Settings { H.autoAddHistory  = True
+               , H.complete        = H.completeFilename
+               , H.historyFile     = Just (F.combine homeDir ".guston/0.1.0/repl/history") -- todo: this path should also be configurable
+               }
+    (loop S.defaultEnv)
 
 data ReplCmd =
     Eval String
