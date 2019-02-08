@@ -18,7 +18,8 @@ import qualified Syntax as S
 
 run :: IO ()
 run = do
-  putStrLn "Welcome to Guston 0.1.0"
+  putStrLn "Welcome to Guston 0.1.0   :exit to exit"
+  putStrLn "------------------------------------------------------------------------------"
   homeDir <- D.getHomeDirectory
   H.runInputT
     H.Settings { H.autoAddHistory  = True
@@ -30,19 +31,19 @@ run = do
 data ReplCmd =
     Eval String
   | Load [String]
-  | Quit
+  | Exit
   deriving (Show)
 
 loop :: S.Env -> H.InputT IO ()
 loop env = do
   mInput <- H.getInputLine "> "
   case mInput of
-    Nothing     -> H.outputStrLn "Goodbye"
+    Nothing     -> return ()
     Just ""     -> loop env
     Just cmd    -> case parseReplCmd cmd of
       Just (Eval gustonStr)    -> runEvalCmd env gustonStr
       Just (Load filepaths) -> runLoadCmd env filepaths
-      Just Quit             -> runQuitCmd
+      Just Exit             -> runQuitCmd
       Nothing               -> runUnknownCmd env cmd
 
 runEvalCmd :: S.Env -> String -> H.InputT IO ()
@@ -71,21 +72,21 @@ loadFiles :: S.Env -> [(String, String)] -> IO (Either (String, S.Env) S.Env)
 loadFiles env [] = return $ Right env
 loadFiles env ((filepath, file):files) = do
   case P.parseFile filepath file of
-    Left parseErr -> return $ Left (show parseErr, env)
+    Left parseErr -> return $ Left (Mega.errorBundlePretty parseErr, env)
     Right sexpr   -> do
       (result, env') <- E.runFile env sexpr
       case result of
         Left evalErr -> return $ Left (show evalErr, env')
         Right _      -> do
-          putStrLn $ "Loaded " ++ filepath
+          putStrLn $ "loaded " ++ filepath
           loadFiles env' files
 
 runQuitCmd :: H.InputT IO ()
-runQuitCmd = H.outputStrLn "Goodbye"
+runQuitCmd = return ()
 
 runUnknownCmd :: S.Env -> String -> H.InputT IO ()
 runUnknownCmd env cmd = do
-  H.outputStrLn $ "Unknown command: \"" ++ cmd ++ "\""
+  H.outputStrLn $ "unknown command: \"" ++ cmd ++ "\""
   loop env
 
 evalInEnv :: S.Env -> String -> IO (Either String (S.Sexpr, S.Env))
@@ -96,7 +97,7 @@ evalInEnv env str = do
       case result of
         Left err  -> return $ Left $ show err
         Right x   -> return $ Right (x, env')
-    Left parseErr -> return $ Left $ show parseErr
+    Left parseErr -> return $ Left $ Mega.errorBundlePretty parseErr
 
 type Parser = Mega.Parsec Void String
 
@@ -110,7 +111,7 @@ evalCmd :: Parser ReplCmd
 evalCmd = Eval <$> Mega.some Mega.anySingle
 
 quitCmd :: Parser ReplCmd
-quitCmd = Char.string ":quit" >> return Quit
+quitCmd = Char.string ":exit" >> return Exit
 
 loadCmd :: Parser ReplCmd
 loadCmd = do

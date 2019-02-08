@@ -29,10 +29,10 @@ sexpr :: Parser S.Sexpr
 sexpr = lexeme (atom <|> list)
 
 atom :: Parser S.Sexpr
-atom = specialForm <|> symbol
+atom = Mega.label "atom" (specialForm <|> symbol)
 
 list :: Parser S.Sexpr
-list = do
+list = Mega.label "list" $ do
   _     <- lexSymbol "("
   exprs <- Mega.many sexpr
   _     <- lexSymbol ")"
@@ -81,7 +81,7 @@ space :: Parser ()
 space = Lex.space Char.space1 lineComment empty
   where
     lineComment :: Parser ()
-    lineComment = Lex.skipLineComment ";"
+    lineComment = Mega.label "comment" $ Lex.skipLineComment ";"
 
 lexeme :: Parser a -> Parser a
 lexeme = Lex.lexeme space
