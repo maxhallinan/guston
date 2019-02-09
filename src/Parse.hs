@@ -6,6 +6,7 @@ import qualified Text.Megaparsec.Char as Char
 import qualified Text.Megaparsec.Char.Lexer as Lex
 import qualified Text.Megaparsec as Mega
 import qualified Text.Megaparsec.Error as Err
+import qualified Text.Megaparsec.Pos as Pos
 import Data.Void (Void)
 import qualified Syntax as S
 
@@ -13,33 +14,39 @@ type Parser = Mega.Parsec Void String
 
 type ParseError = Err.ParseErrorBundle String Void
 
-parseFile :: String -> String -> Either ParseError [S.Sexpr]
+parseFile :: String -> String -> Either ParseError [S.Expr]
 parseFile filename = Mega.parse (contents program) filename
 
-parseStr :: String -> Either ParseError S.Sexpr
+parseStr :: String -> Either ParseError S.Expr
 parseStr = Mega.parse (contents sexpr) ""
 
 contents :: Parser a -> Parser a
 contents p = between space Mega.eof p
 
-program :: Parser [S.Sexpr]
+program :: Parser [S.Expr]
 program = Mega.sepBy sexpr space
 
-sexpr :: Parser S.Sexpr
+sexpr :: Parser S.Expr
 sexpr = lexeme (atom <|> list)
 
-atom :: Parser S.Sexpr
+atom :: Parser S.Expr
 atom = Mega.label "atom" (specialForm <|> symbol)
 
-list :: Parser S.Sexpr
+list :: Parser S.Expr
 list = Mega.label "list" $ do
-  _     <- lexSymbol "("
-  exprs <- Mega.many sexpr
-  _     <- lexSymbol ")"
-  return $ S.Lst exprs
+  s       <- Mega.getParserState
+  let info = stateToInfo s
+  _       <- lexSymbol "("
+  exprs   <- Mega.many sexpr
+  _       <- lexSymbol ")"
+  return $ S.Expr (S.Lst exprs) info
 
-specialForm :: Parser S.Sexpr
-specialForm = S.SFrm <$> (car <|> cdr <|> cons <|> cond <|> def <|> isAtm <|> isEq <|> lambda <|> quote)
+specialForm :: Parser S.Expr
+specialForm = do
+  s     <- Mega.getParserState
+  let info = stateToInfo s
+  expr  <- S.SFrm <$> (car <|> cdr <|> cons <|> cond <|> def <|> isAtm <|> isEq <|> lambda <|> quote)
+  return $ S.Expr expr info
 
 car :: Parser S.SpecialForm
 car = Char.string "car" >> return S.Car
@@ -68,11 +75,13 @@ lambda = Char.string "lambda" >> return S.Lambda
 quote :: Parser S.SpecialForm
 quote = Char.string "quote" >> return S.Quote
 
-symbol :: Parser S.Sexpr
+symbol :: Parser S.Expr
 symbol = do
+  s     <- Mega.getParserState
+  let info = stateToInfo s
   i   <- initial
   sub <- Mega.many subsequent
-  return $ S.Sym (i : sub)
+  return $ S.Expr (S.Sym $ i:sub) info
   where
       initial     = Char.letterChar <|> Mega.oneOf "!$%&*/:<=>?~_^"
       subsequent  = initial <|> Char.digitChar <|> Mega.oneOf ".+-"
@@ -88,3 +97,9 @@ lexeme = Lex.lexeme space
 
 lexSymbol :: String -> Parser String
 lexSymbol = Lex.symbol space
+
+stateToInfo :: Mega.State s -> S.Info
+stateToInfo s = S.Info (col pos) (line pos) (Pos.sourceName pos)
+  where pos = Mega.pstateSourcePos . Mega.statePosState $ s
+        col = Pos.unPos . Pos.sourceColumn
+        line = Pos.unPos . Pos.sourceLine

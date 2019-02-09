@@ -2,11 +2,13 @@
 module Eval (EvalErr(..), eval, evalFile, run, runFile, runEval) where
 
 import Data.Traversable (sequence)
+import qualified Control.Applicative as A
 import Control.Monad.Except as E
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
 
-import Syntax (Env, Sexpr(..), SpecialForm(..))
+import qualified Syntax as Sx
+import Syntax (Env, Expr(..), Info, Sexpr(..), SpecialForm(..))
 
 newtype Eval a = Eval { runEval :: E.ExceptT EvalErr (S.StateT Env IO) a }
   deriving ( Applicative
@@ -17,13 +19,13 @@ newtype Eval a = Eval { runEval :: E.ExceptT EvalErr (S.StateT Env IO) a }
            , E.MonadError EvalErr
            )
 
-run :: Env -> Sexpr -> IO (Either EvalErr Sexpr, Env)
-run env sexpr = rn sexpr env
+run :: Env -> Expr -> IO (Either EvalErr Expr, Env)
+run env expr = rn expr env
   where rn = S.runStateT . E.runExceptT . runEval . eval
 
-runFile :: Env -> [Sexpr] -> IO (Either EvalErr [Sexpr], Env)
-runFile env sexprs = rn evaled env
-  where evaled  = sequence (eval <$> sexprs)
+runFile :: Env -> [Expr] -> IO (Either EvalErr [Expr], Env)
+runFile env exprs = rn evaled env
+  where evaled  = sequence (eval <$> exprs)
         rn      = S.runStateT . E.runExceptT . runEval
 
 data EvalErr
@@ -36,133 +38,139 @@ data EvalErr
   | NotPair
   deriving (Eq, Show)
 
-evalFile :: [Sexpr] -> Eval [Sexpr]
+evalFile :: [Expr] -> Eval [Expr]
 evalFile xs = sequence $ eval <$> xs
 
-eval :: Sexpr -> Eval Sexpr
-eval sexpr = do
+eval :: Expr -> Eval Expr
+eval (Expr sexpr info) = do
   case sexpr of
-    (Sym name)             -> evalSym name
-    (Lst (SFrm sfrm:args)) -> evalSFrm sfrm args
-    (Lst xs)               -> evalLst xs
-    _                      -> E.throwError Unknown
+    (Sym name) -> evalSym name
+    (Lst ((Expr (SFrm sfrm) _):args)) -> evalSFrm info sfrm args
+    (Lst xs) -> evalLst info xs
+    _ -> E.throwError Unknown
 
-evalSym :: String -> Eval Sexpr
+evalSym :: String -> Eval Expr
 evalSym name = do
   env <- S.get
   case M.lookup name env of
-    Just val  -> return val
-    Nothing   -> E.throwError $ UnknownVar name
+    Just expr   -> return expr
+    Nothing     -> E.throwError $ UnknownVar name
 
-evalSFrm :: SpecialForm -> [Sexpr] -> Eval Sexpr
-evalSFrm _ [] = E.throwError NumArgs
-evalSFrm sfrm args = do
+evalSFrm :: Info -> SpecialForm -> [Expr] -> Eval Expr
+evalSFrm _ _ [] = E.throwError NumArgs
+evalSFrm info sfrm args = do
   case sfrm of
-    Car     -> evalCar args
-    Cdr     -> evalCdr args
-    Cond    -> evalCond args
-    Cons    -> evalCons args
-    Def     -> evalDef args
-    IsAtm   -> evalIsAtm args
-    IsEq    -> evalIsEq args
-    Lambda  -> evalLambda args
-    Quote   -> evalQuote args
+    Car     -> evalCar info args
+    Cdr     -> evalCdr info args
+    Cond    -> evalCond info args
+    Cons    -> evalCons info args
+    Def     -> evalDef info args
+    IsAtm   -> evalIsAtm info args
+    IsEq    -> evalIsEq info args
+    Lambda  -> evalLambda info args
+    Quote   -> evalQuote info args
 
-evalIsAtm :: [Sexpr] -> Eval Sexpr
-evalIsAtm [x]   = do
+evalIsAtm :: Info -> [Expr] -> Eval Expr
+evalIsAtm info [x]   = do
   y <- eval x
   case y of
-    (Sym _)   -> return $ Sym "t"
-    (Lst [])  -> return $ Sym "t"
-    _         -> return $ Lst []
-evalIsAtm _ = E.throwError NumArgs
+    Expr (Sym _) _  -> return $ Expr (Sym "t") info
+    Expr (Lst []) _ -> return $ Expr (Sym "t") info
+    Expr _ _        -> return $ Expr (Lst []) info
+evalIsAtm _ _ = E.throwError NumArgs
 
-evalIsEq :: [Sexpr] -> Eval Sexpr
-evalIsEq [x, y] = do
-  x' <- eval x
-  y' <- eval y
-  case (x', y') of
+evalIsEq :: Info -> [Expr] -> Eval Expr
+evalIsEq info [x, y] = do
+  (Expr x2 _, Expr y2 _) <- A.liftA2 (,) (eval x) (eval y)
+  case (x2, y2) of
     (Sym name1, Sym name2) ->
       if name1 == name2
-      then return $ Sym "t"
-      else return $ Lst []
-    (Lst [], Lst [])    -> return $ Sym "t"
-    (_, _)  -> return $ Lst []
-evalIsEq _ = E.throwError NumArgs
+      then return $ Expr (Sym "t") info
+      else return $ Expr (Lst []) info
+    (Lst [], Lst []) -> return $ Expr (Sym "t") info
+    (_, _)  -> return $ Expr (Lst []) info
+evalIsEq _ _ = E.throwError NumArgs
 
-evalCar :: [Sexpr] -> Eval Sexpr
-evalCar [x] = do
-  e <- eval x
+evalCar :: Info -> [Expr] -> Eval Expr
+evalCar info [x] = do
+  Expr e _ <- eval x
   case e of
     (Lst [])      -> E.throwError LstLength
-    (Lst (y:_))   -> return $ y
+    (Lst (y:_))   -> return $ Expr (Sx.sexpr y) info
     _             -> E.throwError WrongTipe
-evalCar _ = E.throwError NumArgs
+evalCar _ _ = E.throwError NumArgs
 
-evalCdr :: [Sexpr] -> Eval Sexpr
-evalCdr [x] = do
-  e <- eval x
+evalCdr :: Info -> [Expr] -> Eval Expr
+evalCdr info [x] = do
+  Expr e _ <- eval x
   case e of
-    (Lst [])      -> return $ Lst []
-    (Lst (_:ys))  -> return $ Lst ys
+    (Lst [])      -> return $ Expr (Lst []) info
+    (Lst (_:ys))  -> return $ Expr (Lst ys) info
     _             -> E.throwError WrongTipe
-evalCdr _ = E.throwError NumArgs
+evalCdr _ _ = E.throwError NumArgs
 
-evalCons :: [Sexpr] -> Eval Sexpr
-evalCons [x, xs] = do
-  e1 <- eval x
-  e2 <- eval xs
+evalCons :: Info -> [Expr] -> Eval Expr
+evalCons info [x, xs] = do
+  Expr e1 i1 <- eval x
+  Expr e2 i2 <- eval xs
   case (e1, e2) of
-    (y, (Lst ys)) -> return $ Lst (y:ys)
+    (y, (Lst ys)) -> return $ Expr (Lst ((Expr e1 i1):ys)) info
     (_, _)        -> E.throwError WrongTipe
     _             -> E.throwError Unknown
-evalCons _ = E.throwError NumArgs
+evalCons _ _ = E.throwError NumArgs
 
-evalCond :: [Sexpr] -> Eval Sexpr
-evalCond [] = E.throwError NumArgs
-evalCond (Lst [p, e]:cs) = do
-  x <- eval p
-  case x of
-    (Sym "t") -> eval e
-    (Lst [])  -> evalCond cs
+evalCond :: Info -> [Expr] -> Eval Expr
+evalCond _ [] = E.throwError NumArgs
+evalCond info (c:cs) =
+  case Sx.sexpr c of
+    Lst [] -> E.throwError NotPair
+    Lst [p, e] -> do
+      Expr x _ <- eval p
+      case x of
+        (Sym "t") -> do
+          Expr x' _ <- eval e
+          return $ Expr x' info
+        (Lst [])  -> do
+          Expr x' _ <- evalCond info cs
+          return $ Expr x' info
+        _         -> E.throwError WrongTipe
+    Lst (_:_) -> E.throwError NotPair
     _         -> E.throwError WrongTipe
-evalCond (Lst _:_)  = E.throwError NotPair
-evalCond (_:_)      = E.throwError WrongTipe
 
-evalDef :: [Sexpr] -> Eval Sexpr
-evalDef [Sym key, expr] = do
-  val <- eval expr
+evalDef :: Info -> [Expr] -> Eval Expr
+evalDef info [Expr (Sym key) _, expr] = do
+  (Expr val i) <- eval expr
   env <- S.get
-  _   <- S.put (M.insert key val env)
-  return val
-evalDef [_,_] = E.throwError WrongTipe
-evalDef _     = E.throwError NumArgs
+  _   <- S.put (M.insert key (Expr val i) env)
+  return $ Expr val info
+evalDef _ [_,_] = E.throwError WrongTipe
+evalDef _ _ = E.throwError NumArgs
 
-evalLambda :: [Sexpr] -> Eval Sexpr
-evalLambda [Lst params, body] = do
+evalLambda :: Info -> [Expr] -> Eval Expr
+evalLambda info [Expr (Lst params) _, body] = do
   env <- S.get
-  return $ Fn env params body
-evalLambda [_,_] = E.throwError WrongTipe
-evalLambda _     = E.throwError NumArgs
+  return $ Expr (Fn env params body) info
+evalLambda _ [_,_] = E.throwError WrongTipe
+evalLambda _ _ = E.throwError NumArgs
 
-evalQuote :: [Sexpr] -> Eval Sexpr
-evalQuote [x] = return x
-evalQuote _   = E.throwError NumArgs
+evalQuote :: Info -> [Expr] -> Eval Expr
+evalQuote info [Expr x _] = return $ Expr x info
+evalQuote _ _ = E.throwError NumArgs
 
-evalLst :: [Sexpr] -> Eval Sexpr
-evalLst [] = E.throwError NumArgs
-evalLst (x:xs) = do
-  fn   <- eval x
+evalLst :: Info -> [Expr] -> Eval Expr
+evalLst _ [] = E.throwError NumArgs
+evalLst info (x:xs) = do
+  Expr fn _ <- eval x
   case fn of
     Fn localEnv params body -> do
       globalEnv <- S.get
       let env = localEnv <> globalEnv
-      Eval $ E.mapExceptT (S.withStateT (const env)) (runEval $ applyLambda params xs body)
+      Eval $ E.mapExceptT (S.withStateT (const env)) (runEval $ applyLambda info params xs body)
     _  -> E.throwError NotFn
 
-applyLambda :: [Sexpr] -> [Sexpr] -> Sexpr -> Eval Sexpr
-applyLambda params args body = do
+applyLambda :: Info -> [Expr] -> [Expr] -> Expr -> Eval Expr
+applyLambda info params args body = do
   env     <- S.get
   args'   <- traverse eval args
-  let env' = M.fromList (zipWith (\(Sym k) v -> (k, v)) params args') <> env
+  let env' = M.fromList (zipWith (\(Expr (Sym k) _) v -> (k, v)) params args') <> env
   Eval $ E.mapExceptT (S.withStateT (const env')) (runEval $ eval body)

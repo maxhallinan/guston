@@ -41,7 +41,6 @@ test-suite spec
   default-language:     Haskell2010
   other-modules:        Spec.Eval
                       , Spec.Parse
-  exposed-modules:      Spec
   ghc-options:          -Wall -threaded -rtsopts -with-rtsopts=-N
   hs-source-dirs:       test
   main-is:              Spec.hs

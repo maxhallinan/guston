@@ -7,7 +7,7 @@ import Test.QuickCheck (Arbitrary, Gen, arbitrary, elements, property, resize)
 import Test.QuickCheck.Gen (oneof, listOf)
 import Test.QuickCheck.Instances.Char (lowerAlpha, nonSpace, numeric, upperAlpha)
 
-import Syntax (Sexpr(..), SpecialForm(..))
+import Syntax (Expr(..), Info(..), Sexpr(..), SpecialForm(..))
 import Parse (parseStr, parseFile)
 
 runTests :: IO ()
@@ -16,21 +16,21 @@ runTests = hspec $ do
     describe "Parse.parseFile" $ do
       describe "special forms" $ do
         it "parses atom?" $ do
-          "atom?" `parsesFileTo` [SFrm IsAtm]
+          "atom?" `parsesFileTo` [Expr (SFrm IsAtm) (Info 1 1 "")]
         it "parses car" $ do
-          "car" `parsesFileTo` [SFrm Car]
+          "car" `parsesFileTo` [Expr (SFrm Car) (Info 1 1 "")]
         it "parses cdr" $ do
-          "cdr" `parsesFileTo` [SFrm Cdr]
+          "cdr" `parsesFileTo` [Expr (SFrm Cdr) (Info 1 1 "")]
         it "parses cns" $ do
-          "cons" `parsesFileTo` [SFrm Cons]
+          "cons" `parsesFileTo` [Expr (SFrm Cons) (Info 1 1 "")]
         it "parses define" $ do
-          "define" `parsesFileTo` [SFrm Def]
+          "define" `parsesFileTo` [Expr (SFrm Def) (Info 1 1 "")]
         it "parses eq?" $ do
-          "eq?" `parsesFileTo` [SFrm IsEq]
+          "eq?" `parsesFileTo` [Expr (SFrm IsEq) (Info 1 1 "")]
         it "parses lambda" $ do
-          "lambda" `parsesFileTo` [SFrm Lambda]
+          "lambda" `parsesFileTo` [Expr (SFrm Lambda) (Info 1 1 "")]
         it "parses quote" $ do
-          "quote" `parsesFileTo` [SFrm Quote]
+          "quote" `parsesFileTo` [Expr (SFrm Quote) (Info 1 1 "")]
 
       describe "symbol" $ do
         it "parses a symbol" $ do
@@ -43,23 +43,23 @@ runTests = hspec $ do
     describe "Parser.parseStr" $ do
       describe "special forms" $ do
         it "parses atom?" $ do
-          "atom?" `parsesStrTo` (SFrm IsAtm)
+          "atom?" `parsesStrTo` Expr (SFrm IsAtm) (Info 1 1 "")
         it "parses car" $ do
-          "car" `parsesStrTo` (SFrm Car)
+          "car" `parsesStrTo` Expr (SFrm Car) (Info 1 1 "")
         it "parses cdr" $ do
-          "cdr" `parsesStrTo` (SFrm Cdr)
+          "cdr" `parsesStrTo` Expr (SFrm Cdr) (Info 1 1 "")
         it "parses cons" $ do
-          "cons" `parsesStrTo` (SFrm Cons)
+          "cons" `parsesStrTo` Expr (SFrm Cons) (Info 1 1 "")
         it "parses cond" $ do
-          "cond" `parsesStrTo` (SFrm Cond)
+          "cond" `parsesStrTo` Expr (SFrm Cond) (Info 1 1 "")
         it "parses define" $ do
-          "define" `parsesStrTo` (SFrm Def)
+          "define" `parsesStrTo` Expr (SFrm Def) (Info 1 1 "")
         it "parses eq?" $ do
-          "eq?" `parsesStrTo` (SFrm IsEq)
+          "eq?" `parsesStrTo` Expr (SFrm IsEq) (Info 1 1 "")
         it "parses lambda" $ do
-          "lambda" `parsesStrTo` (SFrm Lambda)
+          "lambda" `parsesStrTo` Expr (SFrm Lambda) (Info 1 1 "")
         it "parses quote" $ do
-          "quote" `parsesStrTo` (SFrm Quote)
+          "quote" `parsesStrTo` Expr (SFrm Quote) (Info 1 1 "")
 
       describe "symbol" $ do
         it "parses a symbol" $ do
@@ -69,46 +69,52 @@ runTests = hspec $ do
         it "parses a list" $ do
           property prop_parseStr_List
 
-parsesFileTo :: String -> [Sexpr] -> Expectation
+parsesFileTo :: String -> [Expr] -> Expectation
 parsesFileTo file expr =
   case parseFile "" file of
     Right result  -> result `shouldBe` expr
     Left err      -> assertFailure $ show err
 
-parsesStrTo :: String -> Sexpr -> Expectation
+parsesStrTo :: String -> Expr -> Expectation
 parsesStrTo str expr =
   case parseStr str of
     Right result  -> result `shouldBe` expr
     Left err      -> assertFailure $ show err
 
 prop_parseFile_Sym :: ArbSym -> Bool
-prop_parseFile_Sym (ArbSym s) = result == Right expected
-  where result    = parseFile "" s
-        expected  = [Sym s]
+prop_parseFile_Sym (ArbSym s) =
+  case parseFile "" s of
+    (Right [Expr result _]) ->
+      result == Sym s
+    _ ->
+      False
 
 prop_parseFile_List :: ArbLst -> Bool
 prop_parseFile_List (ArbLst l) =
   case parseFile "" l of
-    Right [Lst _] ->
+    Right [Expr (Lst _) _] ->
       True
     _ ->
       False
 
 prop_parseStr_Sym :: ArbSym -> Bool
-prop_parseStr_Sym (ArbSym s) = result == Right expected
-  where result    = parseStr s
-        expected  = Sym s
+prop_parseStr_Sym (ArbSym s) =
+  case parseStr s of
+    Right (Expr result _) ->
+      result == Sym s
+    _ ->
+      False
 
 prop_parseStr_List :: ArbLst -> Bool
 prop_parseStr_List (ArbLst l) =
   case parseStr l of
-    Right (Lst _) ->
+    Right (Expr (Lst _) _) ->
       True
     _ ->
       False
 
-sexpr :: Gen String
-sexpr = oneof [ atom, list ]
+sexpr' :: Gen String
+sexpr' = oneof [ atom, list ]
 
 lineComment :: Gen String
 lineComment = do
@@ -168,4 +174,4 @@ instance Arbitrary ArbLst where
 
 list :: Gen String
 list = parens sexprs
-  where sexprs = unwords <$> (resize 2 $ listOf sexpr)
+  where sexprs = unwords <$> (resize 2 $ listOf sexpr')
