@@ -4,7 +4,7 @@ import Control.Monad.State (runStateT)
 import qualified Data.ByteString.Lazy.Char8 as C
 import qualified Test.Tasty as T
 import qualified Test.Tasty.Golden as G
-import System.FilePath (replaceDirectory)
+import System.FilePath (replaceDirectory, addExtension)
 import System.FilePath.Glob (compile, globDir1)
 
 import qualified Eval as E
@@ -13,7 +13,7 @@ import Syntax (defaultEnv)
 
 main :: IO ()
 main = do
-  paths <- globDir1 (compile "*.wiz") "examples"
+  paths <- globDir1 (compile "*.gus") "examples"
   files <- traverse readSourceFile paths
   T.defaultMain $ T.testGroup "golden tests" $ runTest <$> files
 
@@ -24,8 +24,9 @@ readSourceFile filepath = do
 
 runTest :: (String, String) -> T.TestTree
 runTest (filepath, file) = G.goldenVsString filepath answerFile result
-  where answerFile  = replaceDirectory filepath "golden-files/"
+  where answerFile  = toGoldenPath filepath
         result      = (C.pack . show) <$> evalFile filepath file
+        toGoldenPath = (flip addExtension "golden" . flip replaceDirectory "golden-files/")
 
 evalFile :: String -> String -> IO String
 evalFile filepath file = do
