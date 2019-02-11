@@ -8,9 +8,8 @@ import Test.QuickCheck (Arbitrary, Gen, Property, arbitrary, elements, property,
 import Test.QuickCheck.Instances.Char (lowerAlpha, numeric, upperAlpha)
 import Test.QuickCheck.Gen (oneof, listOf)
 import qualified Test.QuickCheck.Monadic as Monadic
-import qualified Syntax as Sx
 import Syntax (Env, Expr(..), Info(..), Sexpr(..), SpecialForm(..), defaultEnv)
-import Eval (EvalErr(..), run)
+import Eval (EvalErr(..), ErrType(..), run)
 
 runTests :: IO ()
 runTests = hspec $ do
@@ -376,12 +375,12 @@ evaluatesTo expr expected = do
     (Right actual)  -> actual `shouldBe` expected
     (Left err)      -> assertFailure (show err)
 
-failsWith :: Expr -> EvalErr -> Expectation
+failsWith :: Expr -> ErrType -> Expectation
 failsWith expr expected = do
   (result, _) <- Eval.run defaultEnv expr
   case result of
     (Right x)     -> assertFailure $ "expected evaluation to fail but received: " ++ (show x)
-    (Left actual) -> actual `shouldBe` expected
+    (Left (EvalErr actual _)) -> actual `shouldBe` expected
 
 insertsInEnv :: Expr -> (String, Expr) -> Expectation
 insertsInEnv expr (key, expected) = do

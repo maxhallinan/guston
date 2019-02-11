@@ -3,10 +3,8 @@ module Repl where
 import Control.Applicative ((<|>))
 import Control.Monad.Combinators (between)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.State (runStateT)
 import Data.Void (Void)
 import qualified System.Console.Haskeline as H
-import qualified System.Console.Haskeline.Completion as H
 import qualified System.Directory as D
 import qualified System.FilePath as F
 import qualified Text.Megaparsec.Char as Char

@@ -1,6 +1,5 @@
 module Main (main) where
 
-import Control.Monad.State (runStateT)
 import qualified Data.ByteString.Lazy.Char8 as C
 import qualified Test.Tasty as T
 import qualified Test.Tasty.Golden as G

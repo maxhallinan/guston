@@ -1,34 +1,92 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Eval (EvalErr(..), eval, evalFile, run, runFile, runEval) where
+module Eval (EvalErr(..), ErrType(..), eval, evalFile, run, runFile, runEval) where
 
 import Data.Traversable (sequence)
 import qualified Control.Applicative as A
-import Control.Monad.Except as E
+import qualified Control.Monad.Except as E
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
+import Data.List (intercalate)
 
-import qualified Syntax as Sx
-import Syntax (Env, Expr(..), Info, Sexpr(..), SpecialForm(..))
+import Syntax ( Callframe(..)
+              , Callstack
+              , Env
+              , Expr(..)
+              , Info
+              , Sexpr(..)
+              , SpecialForm(..)
+              , callframe
+              , emptyCallstack
+              , popCallframe
+              , pushCallframe
+              )
 
-newtype Eval a = Eval { runEval :: E.ExceptT EvalErr (S.StateT Env IO) a }
+newtype Eval a = Eval { runEval :: E.ExceptT EvalErr (S.StateT EvalState IO) a }
   deriving ( Applicative
            , Functor
            , Monad
-           , S.MonadState Env
-           , MonadIO
+           , S.MonadState EvalState
+           , S.MonadIO
            , E.MonadError EvalErr
            )
 
+data EvalState = EvalState Env Callstack
+
+initEvalState :: Env -> EvalState
+initEvalState env = EvalState env emptyCallstack
+
+getEnv :: Eval Env
+getEnv = do
+  EvalState env _ <- S.get
+  return env
+
+getCallstack :: Eval Callstack
+getCallstack = do
+  EvalState _ stack <- S.get
+  return stack
+
+updateCallstack :: Callstack -> Eval ()
+updateCallstack stack = do
+  (EvalState env _) <- S.get
+  S.put $ EvalState env stack
+
+pushCallframe' :: Expr -> Eval ()
+pushCallframe' expr = do
+  stack <- getCallstack
+  updateCallstack $ pushCallframe (callframe expr) stack
+
+popCallframe' :: Eval ()
+popCallframe' = do
+  stack <- getCallstack
+  updateCallstack $ popCallframe stack
+
+updateEnv :: String -> Expr -> Eval ()
+updateEnv key val = do
+  (EvalState env stack) <- S.get
+  S.put $ EvalState (M.insert key val env) stack
+
 run :: Env -> Expr -> IO (Either EvalErr Expr, Env)
-run env expr = rn expr env
-  where rn = S.runStateT . E.runExceptT . runEval . eval
+run env expr = resultWithEnv <$> (rn expr evalState)
+  where evalState = initEvalState env
+        rn = S.runStateT . E.runExceptT . runEval . eval
 
 runFile :: Env -> [Expr] -> IO (Either EvalErr [Expr], Env)
-runFile env exprs = rn evaled env
-  where evaled  = sequence (eval <$> exprs)
-        rn      = S.runStateT . E.runExceptT . runEval
+runFile env exprs = resultWithEnv <$> (rn evaled evalState)
+  where evaled = sequence (eval <$> exprs)
+        evalState = initEvalState env
+        rn = S.runStateT . E.runExceptT . runEval
 
-data EvalErr
+resultWithEnv :: (a, EvalState) -> (a, Env)
+resultWithEnv (result, EvalState env _) = (result, env)
+
+data EvalErr = EvalErr ErrType Callstack
+
+instance Show EvalErr where
+  show (EvalErr errType callstack) = show errType ++ "\n" ++ cs
+    where cs = intercalate "\n" $ (show . toExpr) <$> (reverse callstack)
+          toExpr (Callframe expr) = expr
+
+data ErrType
   = NumArgs
   | WrongTipe
   | LstLength
@@ -36,7 +94,21 @@ data EvalErr
   | NotFn
   | Unknown
   | NotPair
-  deriving (Eq, Show)
+  deriving (Eq)
+
+instance Show ErrType where
+  show NumArgs = "wrong number of arguments"
+  show WrongTipe = "wrong type"
+  show LstLength = "wrong list length"
+  show (UnknownVar varName) = "unknown var: " ++ varName
+  show NotFn = "not a function"
+  show Unknown = "unknown error"
+  show NotPair = "not a pair"
+
+throwError :: ErrType -> Eval Expr
+throwError errType = do
+  callstack <- getCallstack
+  E.throwError $ EvalErr errType callstack 
 
 evalFile :: [Expr] -> Eval [Expr]
 evalFile xs = sequence $ eval <$> xs
@@ -46,38 +118,38 @@ eval (Expr sexpr info) = do
   case sexpr of
     (Sym name) -> evalSym name
     (Lst ((Expr (SFrm sfrm) _):args)) -> evalSFrm info sfrm args
-    (Lst xs) -> evalLst info xs
-    _ -> E.throwError Unknown
+    (Lst xs) -> evalLst xs
+    _ -> throwError Unknown
 
 evalSym :: String -> Eval Expr
 evalSym name = do
-  env <- S.get
+  env <- getEnv
   case M.lookup name env of
     Just expr   -> return expr
-    Nothing     -> E.throwError $ UnknownVar name
+    Nothing     -> throwError $ UnknownVar name
 
 evalSFrm :: Info -> SpecialForm -> [Expr] -> Eval Expr
-evalSFrm _ _ [] = E.throwError NumArgs
+evalSFrm _ _ [] = throwError NumArgs
 evalSFrm info sfrm args = do
   case sfrm of
-    Car     -> evalCar info args
-    Cdr     -> evalCdr info args
-    Cond    -> evalCond info args
+    Car     -> evalCar args
+    Cdr     -> evalCdr args
+    Cond    -> evalCond args
     Cons    -> evalCons info args
-    Def     -> evalDef info args
+    Def     -> evalDef args
     IsAtm   -> evalIsAtm info args
     IsEq    -> evalIsEq info args
-    Lambda  -> evalLambda info args
-    Quote   -> evalQuote info args
+    Lambda  -> evalLambda args
+    Quote   -> evalQuote args
 
 evalIsAtm :: Info -> [Expr] -> Eval Expr
 evalIsAtm info [x]   = do
   y <- eval x
   case y of
-    Expr (Sym _) _  -> return $ Expr (Sym "t") info
+    Expr (Sym _) _ -> return $ Expr (Sym "t") info
     Expr (Lst []) _ -> return $ Expr (Sym "t") info
-    Expr _ _        -> return $ Expr (Lst []) info
-evalIsAtm _ _ = E.throwError NumArgs
+    Expr _ _ -> return $ Expr (Lst []) info
+evalIsAtm _ _ = throwError NumArgs
 
 evalIsEq :: Info -> [Expr] -> Eval Expr
 evalIsEq info [x, y] = do
@@ -89,88 +161,89 @@ evalIsEq info [x, y] = do
       else return $ Expr (Lst []) info
     (Lst [], Lst []) -> return $ Expr (Sym "t") info
     (_, _)  -> return $ Expr (Lst []) info
-evalIsEq _ _ = E.throwError NumArgs
+evalIsEq _ _ = throwError NumArgs
 
-evalCar :: Info -> [Expr] -> Eval Expr
-evalCar info [x] = do
-  Expr e _ <- eval x
+evalCar :: [Expr] -> Eval Expr
+evalCar [x] = do
+  Expr e info <- eval x
   case e of
-    (Lst [])      -> E.throwError LstLength
-    (Lst (y:_))   -> return $ Expr (Sx.sexpr y) info
-    _             -> E.throwError WrongTipe
-evalCar _ _ = E.throwError NumArgs
+    (Lst []) -> throwError LstLength
+    (Lst ((Expr y _):_)) -> return $ Expr y info
+    _ -> throwError WrongTipe
+evalCar _ = throwError NumArgs
 
-evalCdr :: Info -> [Expr] -> Eval Expr
-evalCdr info [x] = do
-  Expr e _ <- eval x
+evalCdr :: [Expr] -> Eval Expr
+evalCdr [x] = do
+  Expr e info <- eval x
   case e of
     (Lst [])      -> return $ Expr (Lst []) info
     (Lst (_:ys))  -> return $ Expr (Lst ys) info
-    _             -> E.throwError WrongTipe
-evalCdr _ _ = E.throwError NumArgs
+    _             -> throwError WrongTipe
+evalCdr _ = throwError NumArgs
 
 evalCons :: Info -> [Expr] -> Eval Expr
 evalCons info [x, xs] = do
-  Expr e1 i1 <- eval x
-  Expr e2 i2 <- eval xs
+  Expr e1 i1    <- eval x
+  Expr e2 _     <- eval xs
   case (e1, e2) of
-    (y, (Lst ys)) -> return $ Expr (Lst ((Expr e1 i1):ys)) info
-    (_, _)        -> E.throwError WrongTipe
-    _             -> E.throwError Unknown
-evalCons _ _ = E.throwError NumArgs
+    (_, (Lst ys)) -> return $ Expr (Lst ((Expr e1 i1):ys)) info
+    (_, _)        -> throwError WrongTipe
+evalCons _ _ = throwError NumArgs
 
-evalCond :: Info -> [Expr] -> Eval Expr
-evalCond _ [] = E.throwError NumArgs
-evalCond info (c:cs) =
-  case Sx.sexpr c of
-    Lst [] -> E.throwError NotPair
+evalCond :: [Expr] -> Eval Expr
+evalCond [] = throwError NumArgs
+evalCond ((Expr c _):cs) =
+  case c of
+    Lst [] -> throwError NotPair
     Lst [p, e] -> do
       Expr x _ <- eval p
       case x of
-        (Sym "t") -> do
-          Expr x' _ <- eval e
-          return $ Expr x' info
-        (Lst [])  -> do
-          Expr x' _ <- evalCond info cs
-          return $ Expr x' info
-        _         -> E.throwError WrongTipe
-    Lst (_:_) -> E.throwError NotPair
-    _         -> E.throwError WrongTipe
+        (Sym "t") -> eval e
+        (Lst []) -> evalCond cs
+        _ -> throwError WrongTipe
+    Lst (_:_) -> throwError NotPair
+    _         -> throwError WrongTipe
 
-evalDef :: Info -> [Expr] -> Eval Expr
-evalDef info [Expr (Sym key) _, expr] = do
-  (Expr val i) <- eval expr
-  env <- S.get
-  _   <- S.put (M.insert key (Expr val i) env)
-  return $ Expr val info
-evalDef _ [_,_] = E.throwError WrongTipe
-evalDef _ _ = E.throwError NumArgs
+evalDef :: [Expr] -> Eval Expr
+evalDef [Expr (Sym key) _, expr] = do
+  val <- eval expr
+  _ <- updateEnv key val
+  return val
+evalDef [_,_] = throwError WrongTipe
+evalDef _ = throwError NumArgs
 
-evalLambda :: Info -> [Expr] -> Eval Expr
-evalLambda info [Expr (Lst params) _, body] = do
-  env <- S.get
+evalLambda :: [Expr] -> Eval Expr
+evalLambda [Expr (Lst params) info, body] = do
+  env <- getEnv
   return $ Expr (Fn env params body) info
-evalLambda _ [_,_] = E.throwError WrongTipe
-evalLambda _ _ = E.throwError NumArgs
+evalLambda [_,_] = throwError WrongTipe
+evalLambda _ = throwError NumArgs
 
-evalQuote :: Info -> [Expr] -> Eval Expr
-evalQuote info [Expr x _] = return $ Expr x info
-evalQuote _ _ = E.throwError NumArgs
+evalQuote :: [Expr] -> Eval Expr
+evalQuote [Expr x info] = return $ Expr x info
+evalQuote _ = throwError NumArgs
 
-evalLst :: Info -> [Expr] -> Eval Expr
-evalLst _ [] = E.throwError NumArgs
-evalLst info (x:xs) = do
+evalLst :: [Expr] -> Eval Expr
+evalLst [] = throwError NumArgs
+evalLst (x:xs) = do
   Expr fn _ <- eval x
   case fn of
     Fn localEnv params body -> do
-      globalEnv <- S.get
-      let env = localEnv <> globalEnv
-      Eval $ E.mapExceptT (S.withStateT (const env)) (runEval $ applyLambda info params xs body)
-    _  -> E.throwError NotFn
+      globalEnv <- getEnv
+      let env   = localEnv <> globalEnv
+      let expr  = applyLambda params xs body
+      evalInLocalEnv env expr
+    _  -> throwError NotFn
 
-applyLambda :: Info -> [Expr] -> [Expr] -> Expr -> Eval Expr
-applyLambda info params args body = do
-  env     <- S.get
+applyLambda :: [Expr] -> [Expr] -> Expr -> Eval Expr
+applyLambda params args body = do
+  EvalState env stack <- S.get
   args'   <- traverse eval args
   let env' = M.fromList (zipWith (\(Expr (Sym k) _) v -> (k, v)) params args') <> env
-  Eval $ E.mapExceptT (S.withStateT (const env')) (runEval $ eval body)
+  Eval $ E.mapExceptT (S.withStateT (const (EvalState env' stack))) (runEval $ eval body)
+
+evalInLocalEnv :: Env -> Eval Expr -> Eval Expr
+evalInLocalEnv env expr = do
+  stack <- getCallstack
+  let localState = EvalState env stack
+  Eval $ E.mapExceptT (S.withStateT $ const localState) (runEval expr)

@@ -1,20 +1,22 @@
 module Syntax
-  ( Env
+  ( Callframe(..)
+  , Callstack
+  , Env
   , Expr(..)
   , Sexpr(..)
   , SpecialForm(..)
   , Info(..)
+  , callframe
   , defaultEnv
+  , emptyCallstack
+  , popCallframe
+  , pushCallframe
   ) where
 
 import qualified Data.Map as M
 import Data.String (unwords)
 
-data Expr =
-  Expr { sexpr :: Sexpr
-       , info :: Info
-       }
-       deriving (Eq)
+data Expr = Expr Sexpr Info deriving (Eq)
 
 instance Show Expr where
   show (Expr s _) = show s
@@ -47,10 +49,28 @@ instance Show Sexpr where
       Fn _ _ _    -> "<lambda function>"
       Lst sexprs  -> concat [ "(", unwords $ show <$> sexprs, ")" ]
 
+
 type Env = M.Map String Expr
 
 defaultEnv :: Env
 defaultEnv = M.empty
+
+type Callstack = [Callframe]
+
+data Callframe = Callframe Expr deriving (Show)
+
+callframe :: Expr -> Callframe
+callframe expr = Callframe expr
+
+emptyCallstack :: Callstack
+emptyCallstack = []
+
+pushCallframe :: Callframe -> Callstack -> Callstack
+pushCallframe frame stack = (frame:stack)
+
+popCallframe :: Callstack -> Callstack
+popCallframe [] = []
+popCallframe (_:stack) = stack
 
 data SpecialForm =
     Car
