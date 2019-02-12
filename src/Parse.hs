@@ -1,6 +1,9 @@
-module Parse (parseFile, parseStr) where
+module Parse
+  ( parseFile
+  , parseStr
+  ) where
 
-import Control.Applicative (empty, (<|>))
+import Control.Applicative ((<|>), empty)
 import Control.Monad.Combinators (between)
 import Data.Void (Void)
 import qualified Syntax as S
@@ -31,38 +34,39 @@ xexpr = lexeme (withInfo $ atom <|> list)
 withInfo :: Parser S.Expr -> Parser S.XExpr
 withInfo parseExpr = do
   start <- Mega.getOffset
-  expr  <- parseExpr
-  end   <- Mega.getOffset
+  expr <- parseExpr
+  end <- Mega.getOffset
   return $ S.XExpr expr (S.Info (start, end))
 
 atom :: Parser S.Expr
 atom = Mega.label "atom" symbol
 
 list :: Parser S.Expr
-list = Mega.label "list" $ do
-  _       <- lexSymbol "("
-  exprs   <- Mega.many xexpr
-  _       <- lexSymbol ")"
-  return $ S.Lst exprs
+list =
+  Mega.label "list" $ do
+    _ <- lexSymbol "("
+    exprs <- Mega.many xexpr
+    _ <- lexSymbol ")"
+    return $ S.Lst exprs
 
 symbol :: Parser S.Expr
 symbol = do
-  i     <- initial
-  sub   <- Mega.many subsequent
-  case (i:sub) of
-    "::"    -> return $ S.SFrm S.Cons
-    "="     -> return $ S.SFrm S.Def
-    "=="    -> return $ S.SFrm S.IsEq
+  i <- initial
+  sub <- Mega.many subsequent
+  case (i : sub) of
+    "::" -> return $ S.SFrm S.Cons
+    "=" -> return $ S.SFrm S.Def
+    "==" -> return $ S.SFrm S.IsEq
     "atom?" -> return $ S.SFrm S.IsAtm
     "first" -> return $ S.SFrm S.First
-    "fn"    -> return $ S.SFrm S.Lambda
-    "if"    -> return $ S.SFrm S.If
+    "fn" -> return $ S.SFrm S.Lambda
+    "if" -> return $ S.SFrm S.If
     "quote" -> return $ S.SFrm S.Quote
-    "rest"  -> return $ S.SFrm S.Rest
-    _       -> return $ S.Sym (i:sub)
+    "rest" -> return $ S.SFrm S.Rest
+    _ -> return $ S.Sym (i : sub)
   where
-      initial     = Char.letterChar <|> Mega.oneOf "!$%&*/:<=>?~_^"
-      subsequent  = initial <|> Char.digitChar <|> Mega.oneOf ".+-"
+    initial = Char.letterChar <|> Mega.oneOf "!$%&*/:<=>?~_^"
+    subsequent = initial <|> Char.digitChar <|> Mega.oneOf ".+-"
 
 space :: Parser ()
 space = Lex.space Char.space1 lineComment empty
@@ -75,4 +79,3 @@ lexeme = Lex.lexeme space
 
 lexSymbol :: String -> Parser String
 lexSymbol = Lex.symbol space
-

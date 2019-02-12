@@ -1,4 +1,6 @@
-module Main (main) where
+module Main
+  ( main
+  ) where
 
 import qualified Data.ByteString.Lazy.Char8 as C
 import System.FilePath (addExtension, replaceDirectory)
@@ -23,9 +25,11 @@ readSourceFile filepath = do
 
 runTest :: (String, String) -> T.TestTree
 runTest (filepath, file) = G.goldenVsString filepath answerFile result
-  where answerFile  = toGoldenPath filepath
-        result      = (C.pack . show) <$> evalFile filepath file
-        toGoldenPath = (flip addExtension "golden" . flip replaceDirectory "golden-files/")
+  where
+    answerFile = toGoldenPath filepath
+    result = (C.pack . show) <$> evalFile filepath file
+    toGoldenPath =
+      (flip addExtension "golden" . flip replaceDirectory "golden-files/")
 
 evalFile :: String -> String -> IO String
 evalFile filepath file = do
@@ -33,7 +37,7 @@ evalFile filepath file = do
     Right sexpr -> do
       (result, _) <- E.runFile defaultEnv sexpr
       case result of
-        Right []     -> return ""
-        Right rs     -> return $ (show . head . reverse) rs
+        Right [] -> return ""
+        Right rs -> return $ (show . head . reverse) rs
         Left evalErr -> return $ show evalErr
     Left err -> return $ show err

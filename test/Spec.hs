@@ -1,4 +1,6 @@
-module Main (main) where
+module Main
+  ( main
+  ) where
 
 import qualified Spec.Eval
 import qualified Spec.Parse

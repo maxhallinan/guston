@@ -17,17 +17,19 @@ import qualified Syntax as S
 run :: IO ()
 run = do
   putStrLn "Welcome to Guston 0.1.0   :exit to exit"
-  putStrLn "------------------------------------------------------------------------------"
+  putStrLn
+    "------------------------------------------------------------------------------"
   homeDir <- D.getHomeDirectory
   H.runInputT
-    H.Settings { H.autoAddHistory  = True
-               , H.complete        = H.completeFilename
-               , H.historyFile     = Just (F.combine homeDir ".guston/0.1.0/repl/history") -- todo: this path should also be configurable
-               }
+    H.Settings
+      { H.autoAddHistory = True
+      , H.complete = H.completeFilename
+      , H.historyFile = Just (F.combine homeDir ".guston/0.1.0/repl/history") -- todo: this path should also be configurable
+      }
     (loop S.defaultEnv)
 
-data ReplCmd =
-    Eval String
+data ReplCmd
+  = Eval String
   | Load [String]
   | Exit
   deriving (Show)
@@ -36,29 +38,31 @@ loop :: S.Env -> H.InputT IO ()
 loop env = do
   mInput <- H.getInputLine "> "
   case mInput of
-    Nothing     -> return ()
-    Just ""     -> loop env
-    Just cmd    -> case parseReplCmd cmd of
-      Just (Eval gustonStr) -> runEvalCmd env gustonStr
-      Just (Load filepaths) -> runLoadCmd env filepaths
-      Just Exit             -> runQuitCmd
-      Nothing               -> runUnknownCmd env cmd
+    Nothing -> return ()
+    Just "" -> loop env
+    Just cmd ->
+      case parseReplCmd cmd of
+        Just (Eval gustonStr) -> runEvalCmd env gustonStr
+        Just (Load filepaths) -> runLoadCmd env filepaths
+        Just Exit -> runQuitCmd
+        Nothing -> runUnknownCmd env cmd
 
 runEvalCmd :: S.Env -> String -> H.InputT IO ()
 runEvalCmd env gustonStr = do
   result <- liftIO $ evalInEnv env gustonStr
   either onError onSuccess result
-  where onError errMsg = do
-          H.outputStrLn errMsg
-          loop env
-        onSuccess (result, env') = do
-          H.outputStrLn $ show result
-          loop env'
+  where
+    onError errMsg = do
+      H.outputStrLn errMsg
+      loop env
+    onSuccess (result, env') = do
+      H.outputStrLn $ show result
+      loop env'
 
 runLoadCmd :: S.Env -> [String] -> H.InputT IO ()
 runLoadCmd env filepaths = do
-  files   <- liftIO $ traverse readFile filepaths
-  result  <- liftIO $ loadFiles env (zip filepaths files)
+  files <- liftIO $ traverse readFile filepaths
+  result <- liftIO $ loadFiles env (zip filepaths files)
   case result of
     Left (errMsg, env') -> do
       H.outputStrLn errMsg
@@ -71,11 +75,11 @@ loadFiles env [] = return $ Right env
 loadFiles env ((filepath, file):files) = do
   case P.parseFile filepath file of
     Left parseErr -> return $ Left (Mega.errorBundlePretty parseErr, env)
-    Right sexpr   -> do
+    Right sexpr -> do
       (result, env') <- E.runFile env sexpr
       case result of
         Left evalErr -> return $ Left (show evalErr, env')
-        Right _      -> do
+        Right _ -> do
           putStrLn $ "loaded " ++ filepath
           loadFiles env' files
 
@@ -94,7 +98,7 @@ evalInEnv env str = do
       (result, env') <- E.run env sexpr
       case result of
         Left err -> return $ Left $ show err
-        Right x  -> return $ Right (x, env')
+        Right x -> return $ Right (x, env')
     Left parseErr -> return $ Left $ Mega.errorBundlePretty parseErr
 
 type Parser = Mega.Parsec Void String
@@ -103,7 +107,8 @@ parseReplCmd :: String -> Maybe ReplCmd
 parseReplCmd = Mega.parseMaybe replCmd
 
 replCmd :: Parser ReplCmd
-replCmd = between Char.space (Char.space <|> Mega.eof) (loadCmd <|> quitCmd <|> evalCmd)
+replCmd =
+  between Char.space (Char.space <|> Mega.eof) (loadCmd <|> quitCmd <|> evalCmd)
 
 evalCmd :: Parser ReplCmd
 evalCmd = Eval <$> Mega.some Mega.anySingle
@@ -115,6 +120,7 @@ loadCmd :: Parser ReplCmd
 loadCmd = do
   _ <- Char.string ":load"
   _ <- Char.space
-  filenames  <- Mega.sepBy filename Char.space
+  filenames <- Mega.sepBy filename Char.space
   return $ Load filenames
-  where filename = Mega.some $ Mega.anySingleBut ' '
+  where
+    filename = Mega.some $ Mega.anySingleBut ' '
