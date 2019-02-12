@@ -55,7 +55,7 @@ runTests = hspec $ do
 
         describe "car" $ do
           it "(car xs) returns the first item in xs" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Car
+            (toExpr $ Lst [ toExpr $ SFrm First
                           , toExpr $ Lst [ toExpr $ SFrm Quote
                                          , toExpr $ Lst [ toExpr $ Sym "x"]
                                          ]
@@ -63,7 +63,7 @@ runTests = hspec $ do
             `evaluatesTo`
             (toExpr $ Sym "x")
           it "(car xs) fails with WrongTipe if xs is not a list" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Car
+            (toExpr $ Lst [ toExpr $ SFrm First
                           , toExpr $ Lst [ toExpr $ SFrm Quote
                                          , toExpr $ Sym "x"
                                          ]
@@ -71,7 +71,7 @@ runTests = hspec $ do
             `failsWith`
             WrongTipe
           it "(car xs) fails with LstLength if xs is an empty list" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Car
+            (toExpr $ Lst [ toExpr $ SFrm First
                           , toExpr $ Lst [ toExpr $ SFrm Quote
                                          , toExpr $ Lst []
                                          ]
@@ -81,7 +81,7 @@ runTests = hspec $ do
 
         describe "cdr" $ do
           it "(cdr xs) returns the tail of xs" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Cdr
+            (toExpr $ Lst [ toExpr $ SFrm Rest
                           , toExpr $ Lst [ toExpr $ SFrm Quote
                                          , toExpr $ Lst [ toExpr $ Sym "x"
                                                         , toExpr $ Sym "y"
@@ -92,7 +92,7 @@ runTests = hspec $ do
             `evaluatesTo`
             (toExpr $ Lst [ toExpr $ Sym "y", toExpr $ Sym "z" ])
           it "(cdr xs) returns an empty list if xs is empty" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Cdr
+            (toExpr $ Lst [ toExpr $ SFrm Rest
                           , toExpr $ Lst [ toExpr $ SFrm Quote
                                          , toExpr $ Lst []
                                          ]
@@ -100,7 +100,7 @@ runTests = hspec $ do
             `evaluatesTo`
             (toExpr $ Lst [])
           it "(car xs) throws an exception if xs is not a list" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Cdr
+            (toExpr $ Lst [ toExpr $ SFrm Rest
                           , toExpr $ Lst [ toExpr $ SFrm Quote
                                          , toExpr $ Sym "foo"
                                          ]
@@ -108,57 +108,29 @@ runTests = hspec $ do
             `failsWith`
             WrongTipe
 
-        describe "cond" $ do
-          it "(cond cs) returns the value of the first true condition in cs" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Cond
-                          , toExpr $ Lst [ toExpr $ Lst [ toExpr $ SFrm Quote
-                                                        , toExpr $ Lst []
-                                                        ]
-                                         , toExpr $ Lst [ toExpr $ SFrm Quote
-                                                        , toExpr $ Sym "x"
-                                                        ]
-                                         ]
-                          , toExpr $ Lst [ toExpr $ Lst [ toExpr $ SFrm Quote
-                                                        , toExpr $ Sym "t"
-                                                        ]
-                                         , toExpr $ Lst [ toExpr $ SFrm Quote
-                                                        , toExpr $ Sym "y"
-                                                        ]
-                                         ]
+        describe "if" $ do
+          it "(if (quote t) (quote x) (quote y)) evaluates to x" $ do
+            (toExpr $ Lst [ toExpr $ SFrm If
+                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "t" ]
+                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "x" ]
+                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "y" ]
+                          ])
+            `evaluatesTo`
+            (toExpr $ Sym "x")
+          it "(if (quote ()) (quote x) (quote y)) evaluates to y" $ do
+            (toExpr $ Lst [ toExpr $ SFrm If
+                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Lst [] ]
+                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "x" ]
+                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "y" ]
                           ])
             `evaluatesTo`
             (toExpr $ Sym "y")
-          it "(cond (quote ())) fails with NotPair" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Cond
-                          , toExpr $ Lst []
+          it "(cond (quote ())) fails with NumArgs" $ do
+            (toExpr $ Lst [ toExpr $ SFrm If
+                          , toExpr $ Sym "foo"
                           ])
             `failsWith`
-            NotPair
-          it "(cond ((quote x))) fails with NotPair" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Cond
-                          , toExpr $ Lst [ toExpr $ Lst [ toExpr $ SFrm Quote
-                                                        , toExpr $ Sym "x"
-                                                        ]
-                                         ]
-                          ])
-            `failsWith`
-            NotPair
-          it "(cond ((quote x) (quote y) (quote z))) fails with NotPair" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Cond
-                          , toExpr $ Lst [ toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "x" ]]
-                          , toExpr $ Lst [ toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "y" ]]
-                          , toExpr $ Lst [ toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "z" ]]
-                          ])
-            `failsWith`
-            NotPair
-          it "(cond cs) throws an exception if cs is not a list" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Cond
-                          , toExpr $ Lst [ toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "x"]
-                                         , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "y"]
-                                         ]
-                          ])
-            `failsWith`
-            WrongTipe
+            NumArgs
 
         describe "cons" $ do
           it "(cons x y) adds item x to the head of list y" $ do
@@ -414,7 +386,7 @@ genSym = do
   return $ toExpr (Sym name)
 
 genSFrm :: Gen Expr
-genSFrm = (toExpr . SFrm) <$> elements [ Car , Cdr , Cons , Cond , Def , IsAtm , IsEq , Lambda , Quote ]
+genSFrm = (toExpr . SFrm) <$> elements [ First , Rest , Cons , If , Def , IsAtm , IsEq , Lambda , Quote ]
 
 genLst :: Gen Expr
 genLst = do

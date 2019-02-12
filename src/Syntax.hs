@@ -73,10 +73,10 @@ popCallframe [] = []
 popCallframe (_:stack) = stack
 
 data SpecialForm =
-    Car
-  | Cdr
+    First
+  | Rest
   | Cons
-  | Cond
+  | If
   | Def
   | IsAtm
   | IsEq
@@ -86,12 +86,12 @@ data SpecialForm =
 
 instance Show SpecialForm where
   show sfrm = case sfrm of
-    Car     -> "car"
-    Cdr     -> "cdr"
-    Cons    -> "cons"
-    Cond    -> "cond"
-    Def     -> "define"
+    First   -> "first"
+    Rest    -> "rest"
+    Cons    -> "::"
+    If      -> "if"
+    Def     -> "="
     IsAtm   -> "atom?"
-    IsEq    -> "eq?"
-    Lambda  -> "lambda"
+    IsEq    -> "=="
+    Lambda  -> "fn"
     Quote   -> "quote"

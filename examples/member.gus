@@ -1,11 +1,13 @@
-; member? evaluates to true if the atom x is in the list xs, otherwise false
-; from The Little Schemer by Daniel P. Friedman and Matthias Felleisen
-(define member?
-  (lambda (x xs)
-    (cond
-      ((eq? xs (quote ())) (quote ()))
-      ((quote t) (cond
-        ((eq? x (car xs)) (quote t))
-        ((quote t) (member? x (cdr xs))))))))
+(= null?
+  (fn (xs)
+    (== xs (quote ()))))
+
+(= member?
+  (fn (x xs)
+    (if (null? xs)
+      (quote t)
+      (if (== x (first xs))
+        (quote t)
+        (member? x (rest xs))))))
 
 (member? (quote c) (quote (a b c)))

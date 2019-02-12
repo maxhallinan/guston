@@ -132,9 +132,9 @@ evalSFrm :: Info -> SpecialForm -> [Expr] -> Eval Expr
 evalSFrm _ _ [] = throwError NumArgs
 evalSFrm info sfrm args = do
   case sfrm of
-    Car     -> evalCar args
-    Cdr     -> evalCdr args
-    Cond    -> evalCond args
+    First   -> evalFirst args
+    Rest    -> evalRest args
+    If      -> evalIf args
     Cons    -> evalCons info args
     Def     -> evalDef args
     IsAtm   -> evalIsAtm info args
@@ -163,23 +163,23 @@ evalIsEq info [x, y] = do
     (_, _)  -> return $ Expr (Lst []) info
 evalIsEq _ _ = throwError NumArgs
 
-evalCar :: [Expr] -> Eval Expr
-evalCar [x] = do
+evalFirst :: [Expr] -> Eval Expr
+evalFirst [x] = do
   Expr e info <- eval x
   case e of
     (Lst []) -> throwError LstLength
     (Lst ((Expr y _):_)) -> return $ Expr y info
     _ -> throwError WrongTipe
-evalCar _ = throwError NumArgs
+evalFirst _ = throwError NumArgs
 
-evalCdr :: [Expr] -> Eval Expr
-evalCdr [x] = do
+evalRest :: [Expr] -> Eval Expr
+evalRest [x] = do
   Expr e info <- eval x
   case e of
     (Lst [])      -> return $ Expr (Lst []) info
     (Lst (_:ys))  -> return $ Expr (Lst ys) info
     _             -> throwError WrongTipe
-evalCdr _ = throwError NumArgs
+evalRest _ = throwError NumArgs
 
 evalCons :: Info -> [Expr] -> Eval Expr
 evalCons info [x, xs] = do
@@ -190,19 +190,13 @@ evalCons info [x, xs] = do
     (_, _)        -> throwError WrongTipe
 evalCons _ _ = throwError NumArgs
 
-evalCond :: [Expr] -> Eval Expr
-evalCond [] = throwError NumArgs
-evalCond ((Expr c _):cs) =
-  case c of
-    Lst [] -> throwError NotPair
-    Lst [p, e] -> do
-      Expr x _ <- eval p
-      case x of
-        (Sym "t") -> eval e
-        (Lst []) -> evalCond cs
-        _ -> throwError WrongTipe
-    Lst (_:_) -> throwError NotPair
-    _         -> throwError WrongTipe
+evalIf :: [Expr] -> Eval Expr
+evalIf [c, e1, e2] = do
+  x <- eval c
+  case x of
+    Expr (Lst []) _ -> eval e2
+    Expr _ _ -> eval e1
+evalIf _ = throwError NumArgs
 
 evalDef :: [Expr] -> Eval Expr
 evalDef [Expr (Sym key) _, expr] = do

@@ -3,7 +3,7 @@ module Spec.Parse (runTests) where
 import Test.Hspec (hspec, describe, it, shouldBe)
 import Test.Hspec.Expectations (Expectation)
 import Test.HUnit.Lang (assertFailure)
-import Test.QuickCheck (Arbitrary, Gen, arbitrary, elements, property, resize)
+import Test.QuickCheck (Arbitrary, Gen, arbitrary, elements, property, resize, suchThat)
 import Test.QuickCheck.Gen (oneof, listOf)
 import Test.QuickCheck.Instances.Char (lowerAlpha, nonSpace, numeric, upperAlpha)
 
@@ -17,20 +17,22 @@ runTests = hspec $ do
       describe "special forms" $ do
         it "parses atom?" $ do
           "atom?" `parsesFileTo` [Expr (SFrm IsAtm) (Info 1 1 "")]
-        it "parses car" $ do
-          "car" `parsesFileTo` [Expr (SFrm Car) (Info 1 1 "")]
-        it "parses cdr" $ do
-          "cdr" `parsesFileTo` [Expr (SFrm Cdr) (Info 1 1 "")]
-        it "parses cns" $ do
-          "cons" `parsesFileTo` [Expr (SFrm Cons) (Info 1 1 "")]
-        it "parses define" $ do
-          "define" `parsesFileTo` [Expr (SFrm Def) (Info 1 1 "")]
-        it "parses eq?" $ do
-          "eq?" `parsesFileTo` [Expr (SFrm IsEq) (Info 1 1 "")]
-        it "parses lambda" $ do
-          "lambda" `parsesFileTo` [Expr (SFrm Lambda) (Info 1 1 "")]
+        it "parses first" $ do
+          "first" `parsesFileTo` [Expr (SFrm First) (Info 1 1 "")]
+        it "parses rest" $ do
+          "rest" `parsesFileTo` [Expr (SFrm Rest) (Info 1 1 "")]
+        it "parses ::" $ do
+          "::" `parsesFileTo` [Expr (SFrm Cons) (Info 1 1 "")]
+        it "parses =" $ do
+          "=" `parsesFileTo` [Expr (SFrm Def) (Info 1 1 "")]
+        it "parses ==" $ do
+          "==" `parsesFileTo` [Expr (SFrm IsEq) (Info 1 1 "")]
+        it "parses fn" $ do
+          "fn" `parsesFileTo` [Expr (SFrm Lambda) (Info 1 1 "")]
         it "parses quote" $ do
           "quote" `parsesFileTo` [Expr (SFrm Quote) (Info 1 1 "")]
+        it "parses if" $ do
+          "if" `parsesFileTo` [Expr (SFrm If) (Info 1 1 "")]
 
       describe "symbol" $ do
         it "parses a symbol" $ do
@@ -44,20 +46,20 @@ runTests = hspec $ do
       describe "special forms" $ do
         it "parses atom?" $ do
           "atom?" `parsesStrTo` Expr (SFrm IsAtm) (Info 1 1 "")
-        it "parses car" $ do
-          "car" `parsesStrTo` Expr (SFrm Car) (Info 1 1 "")
-        it "parses cdr" $ do
-          "cdr" `parsesStrTo` Expr (SFrm Cdr) (Info 1 1 "")
-        it "parses cons" $ do
-          "cons" `parsesStrTo` Expr (SFrm Cons) (Info 1 1 "")
-        it "parses cond" $ do
-          "cond" `parsesStrTo` Expr (SFrm Cond) (Info 1 1 "")
-        it "parses define" $ do
-          "define" `parsesStrTo` Expr (SFrm Def) (Info 1 1 "")
-        it "parses eq?" $ do
-          "eq?" `parsesStrTo` Expr (SFrm IsEq) (Info 1 1 "")
-        it "parses lambda" $ do
-          "lambda" `parsesStrTo` Expr (SFrm Lambda) (Info 1 1 "")
+        it "parses first" $ do
+          "first" `parsesStrTo` Expr (SFrm First) (Info 1 1 "")
+        it "parses rest" $ do
+          "rest" `parsesStrTo` Expr (SFrm Rest) (Info 1 1 "")
+        it "parses ::" $ do
+          "::" `parsesStrTo` Expr (SFrm Cons) (Info 1 1 "")
+        it "parses if" $ do
+          "if" `parsesStrTo` Expr (SFrm If) (Info 1 1 "")
+        it "parses =" $ do
+          "=" `parsesStrTo` Expr (SFrm Def) (Info 1 1 "")
+        it "parses ==" $ do
+          "==" `parsesStrTo` Expr (SFrm IsEq) (Info 1 1 "")
+        it "parses fn" $ do
+          "fn" `parsesStrTo` Expr (SFrm Lambda) (Info 1 1 "")
         it "parses quote" $ do
           "quote" `parsesStrTo` Expr (SFrm Quote) (Info 1 1 "")
 
@@ -150,8 +152,12 @@ instance Arbitrary ArbSym where
 alpha :: Gen Char
 alpha = oneof [ lowerAlpha, upperAlpha ]
 
+isNotSFrm :: String -> Bool
+isNotSFrm x = not $ elem x sFrms
+  where sFrms = ["::", "=", "==", "atom?", "first", "fn", "if", "quote", "rest"]
+
 symbol :: Gen String
-symbol = do
+symbol = flip suchThat isNotSFrm $ do
   i   <- initial
   sub <- listOf subsequent
   return (i : sub)

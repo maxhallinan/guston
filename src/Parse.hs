@@ -30,7 +30,7 @@ sexpr :: Parser S.Expr
 sexpr = lexeme (atom <|> list)
 
 atom :: Parser S.Expr
-atom = Mega.label "atom" (specialForm <|> symbol)
+atom = Mega.label "atom" symbol
 
 list :: Parser S.Expr
 list = Mega.label "list" $ do
@@ -41,47 +41,24 @@ list = Mega.label "list" $ do
   _       <- lexSymbol ")"
   return $ S.Expr (S.Lst exprs) info
 
-specialForm :: Parser S.Expr
-specialForm = do
-  s     <- Mega.getParserState
-  let info = stateToInfo s
-  expr  <- S.SFrm <$> (car <|> cdr <|> cons <|> cond <|> def <|> isAtm <|> isEq <|> lambda <|> quote)
-  return $ S.Expr expr info
-
-car :: Parser S.SpecialForm
-car = Char.string "car" >> return S.Car
-
-cdr :: Parser S.SpecialForm
-cdr = Char.string "cdr" >> return S.Cdr
-
-cons :: Parser S.SpecialForm
-cons = Char.string "cons" >> return S.Cons
-
-cond :: Parser S.SpecialForm
-cond = Char.string "cond" >> return S.Cond
-
-def :: Parser S.SpecialForm
-def = Char.string "define" >> return S.Def
-
-isAtm :: Parser S.SpecialForm
-isAtm = Char.string "atom?" >> return S.IsAtm
-
-isEq :: Parser S.SpecialForm
-isEq = Char.string "eq?" >> return S.IsEq
-
-lambda :: Parser S.SpecialForm
-lambda = Char.string "lambda" >> return S.Lambda
-
-quote :: Parser S.SpecialForm
-quote = Char.string "quote" >> return S.Quote
-
 symbol :: Parser S.Expr
 symbol = do
   s     <- Mega.getParserState
   let info = stateToInfo s
+  let toExpr x = S.Expr x info
   i   <- initial
   sub <- Mega.many subsequent
-  return $ S.Expr (S.Sym $ i:sub) info
+  case (i:sub) of
+    "::"    -> return $ toExpr $ S.SFrm S.Cons
+    "="     -> return $ toExpr $ S.SFrm S.Def
+    "=="    -> return $ toExpr $ S.SFrm S.IsEq
+    "atom?" -> return $ toExpr $ S.SFrm S.IsAtm
+    "first" -> return $ toExpr $ S.SFrm S.First
+    "fn"    -> return $ toExpr $ S.SFrm S.Lambda
+    "if"    -> return $ toExpr $ S.SFrm S.If
+    "quote" -> return $ toExpr $ S.SFrm S.Quote
+    "rest"  -> return $ toExpr $ S.SFrm S.Rest
+    _       -> return $ toExpr $ S.Sym (i:sub)
   where
       initial     = Char.letterChar <|> Mega.oneOf "!$%&*/:<=>?~_^"
       subsequent  = initial <|> Char.digitChar <|> Mega.oneOf ".+-"
