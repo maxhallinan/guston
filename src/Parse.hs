@@ -34,8 +34,7 @@ atom = Mega.label "atom" symbol
 
 list :: Parser S.Expr
 list = Mega.label "list" $ do
-  s       <- Mega.getParserState
-  let info = stateToInfo s
+  info    <- parseInfo
   _       <- lexSymbol "("
   exprs   <- Mega.many sexpr
   _       <- lexSymbol ")"
@@ -43,22 +42,20 @@ list = Mega.label "list" $ do
 
 symbol :: Parser S.Expr
 symbol = do
-  s     <- Mega.getParserState
-  let info = stateToInfo s
-  let toExpr x = S.Expr x info
-  i   <- initial
-  sub <- Mega.many subsequent
+  info  <- parseInfo
+  i     <- initial
+  sub   <- Mega.many subsequent
   case (i:sub) of
-    "::"    -> return $ toExpr $ S.SFrm S.Cons
-    "="     -> return $ toExpr $ S.SFrm S.Def
-    "=="    -> return $ toExpr $ S.SFrm S.IsEq
-    "atom?" -> return $ toExpr $ S.SFrm S.IsAtm
-    "first" -> return $ toExpr $ S.SFrm S.First
-    "fn"    -> return $ toExpr $ S.SFrm S.Lambda
-    "if"    -> return $ toExpr $ S.SFrm S.If
-    "quote" -> return $ toExpr $ S.SFrm S.Quote
-    "rest"  -> return $ toExpr $ S.SFrm S.Rest
-    _       -> return $ toExpr $ S.Sym (i:sub)
+    "::"    -> return $ S.Expr (S.SFrm S.Cons) info
+    "="     -> return $ S.Expr (S.SFrm S.Def) info
+    "=="    -> return $ S.Expr (S.SFrm S.IsEq) info
+    "atom?" -> return $ S.Expr (S.SFrm S.IsAtm) info
+    "first" -> return $ S.Expr (S.SFrm S.First) info
+    "fn"    -> return $ S.Expr (S.SFrm S.Lambda) info
+    "if"    -> return $ S.Expr (S.SFrm S.If) info
+    "quote" -> return $ S.Expr (S.SFrm S.Quote) info
+    "rest"  -> return $ S.Expr (S.SFrm S.Rest) info
+    _       -> return $ S.Expr (S.Sym $ i:sub) info
   where
       initial     = Char.letterChar <|> Mega.oneOf "!$%&*/:<=>?~_^"
       subsequent  = initial <|> Char.digitChar <|> Mega.oneOf ".+-"
@@ -75,8 +72,11 @@ lexeme = Lex.lexeme space
 lexSymbol :: String -> Parser String
 lexSymbol = Lex.symbol space
 
+parseInfo :: Parser S.Info
+parseInfo = Mega.getParserState >>= return . stateToInfo
+
 stateToInfo :: Mega.State s -> S.Info
 stateToInfo s = S.Info (col pos) (line pos) (Pos.sourceName pos)
-  where pos = Mega.pstateSourcePos . Mega.statePosState $ s
-        col = Pos.unPos . Pos.sourceColumn
-        line = Pos.unPos . Pos.sourceLine
+  where pos   = Mega.pstateSourcePos . Mega.statePosState $ s
+        col   = Pos.unPos . Pos.sourceColumn
+        line  = Pos.unPos . Pos.sourceLine
