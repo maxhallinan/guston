@@ -165,7 +165,10 @@ evalCons info [x, xs] = do
   XExpr e1 i1 <- eval x
   XExpr e2 _ <- eval xs
   case (e1, e2) of
-    (_, (Lst ys)) -> return $ XExpr (Lst ((XExpr e1 i1) : ys)) info
+    (_, (Lst ys)) -> do
+      let y = XExpr e1 i1
+      let expr = Lst (y : ys)
+      return $ XExpr expr info
     (_, _) -> throwError WrongTipe info
 evalCons info _ = throwError NumArgs info
 
@@ -210,7 +213,7 @@ evalLst _ (x:xs) = do
 
 applyLambda :: [XExpr] -> [XExpr] -> XExpr -> Eval XExpr
 applyLambda params args body = do
-  EvalState env <- S.get
+  env <- getEnv
   args' <- traverse eval args
   let env' =
         M.fromList (zipWith (\(XExpr (Sym k) _) v -> (k, v)) params args') <>
