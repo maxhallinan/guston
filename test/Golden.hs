@@ -1,10 +1,10 @@
 module Main (main) where
 
 import qualified Data.ByteString.Lazy.Char8 as C
+import System.FilePath (addExtension, replaceDirectory)
+import System.FilePath.Glob (compile, globDir1)
 import qualified Test.Tasty as T
 import qualified Test.Tasty.Golden as G
-import System.FilePath (replaceDirectory, addExtension)
-import System.FilePath.Glob (compile, globDir1)
 
 import qualified Eval as E
 import Parse (parseFile)
@@ -33,7 +33,7 @@ evalFile filepath file = do
     Right sexpr -> do
       (result, _) <- E.runFile defaultEnv sexpr
       case result of
-        Right []      -> return ""
-        Right rs      -> return $ (show . head . reverse) rs
-        Left evalErr  -> return $ show evalErr
+        Right []     -> return ""
+        Right rs     -> return $ (show . head . reverse) rs
+        Left evalErr -> return $ show evalErr
     Left err -> return $ show err

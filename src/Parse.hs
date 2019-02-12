@@ -1,13 +1,13 @@
 module Parse (parseFile, parseStr) where
 
-import Control.Applicative ((<|>), empty)
+import Control.Applicative (empty, (<|>))
 import Control.Monad.Combinators (between)
-import qualified Text.Megaparsec.Char as Char
-import qualified Text.Megaparsec.Char.Lexer as Lex
-import qualified Text.Megaparsec as Mega
-import qualified Text.Megaparsec.Error as Err
 import Data.Void (Void)
 import qualified Syntax as S
+import qualified Text.Megaparsec as Mega
+import qualified Text.Megaparsec.Char as Char
+import qualified Text.Megaparsec.Char.Lexer as Lex
+import qualified Text.Megaparsec.Error as Err
 
 type Parser = Mega.Parsec Void String
 

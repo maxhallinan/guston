@@ -1,7 +1,7 @@
 module Main (main) where
 
-import qualified Spec.Parse
 import qualified Spec.Eval
+import qualified Spec.Parse
 
 main :: IO ()
 main = do

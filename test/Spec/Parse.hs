@@ -1,14 +1,14 @@
 module Spec.Parse (runTests) where
 
-import Test.Hspec (hspec, describe, it, shouldBe)
+import Test.Hspec (describe, hspec, it, shouldBe)
 import Test.Hspec.Expectations (Expectation)
 import Test.HUnit.Lang (assertFailure)
 import Test.QuickCheck (Arbitrary, Gen, arbitrary, elements, property, resize, suchThat)
-import Test.QuickCheck.Gen (oneof, listOf)
+import Test.QuickCheck.Gen (listOf, oneof)
 import Test.QuickCheck.Instances.Char (lowerAlpha, nonSpace, numeric, upperAlpha)
 
-import Syntax (XExpr(..), Info(..), Expr(..), SpecialForm(..))
-import Parse (parseStr, parseFile)
+import Parse (parseFile, parseStr)
+import Syntax (Expr (..), Info (..), SpecialForm (..), XExpr (..))
 
 runTests :: IO ()
 runTests = hspec $ do
@@ -74,14 +74,14 @@ runTests = hspec $ do
 parsesFileTo :: String -> [XExpr] -> Expectation
 parsesFileTo file expr =
   case parseFile "" file of
-    Right result  -> result `shouldBe` expr
-    Left err      -> assertFailure $ show err
+    Right result -> result `shouldBe` expr
+    Left err     -> assertFailure $ show err
 
 parsesStrTo :: String -> XExpr -> Expectation
 parsesStrTo str expr =
   case parseStr str of
-    Right result  -> result `shouldBe` expr
-    Left err      -> assertFailure $ show err
+    Right result -> result `shouldBe` expr
+    Left err     -> assertFailure $ show err
 
 prop_parseFile_Sym :: ArbSym -> Bool
 prop_parseFile_Sym (ArbSym s) =

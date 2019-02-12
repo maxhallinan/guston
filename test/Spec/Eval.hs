@@ -1,15 +1,15 @@
 module Spec.Eval (runTests) where
 
 import qualified Data.Map as M
-import Test.Hspec (hspec, describe, it, shouldBe)
+import Eval (ErrType (..), EvalErr (..), run)
+import Syntax (Env, Expr (..), Info (..), SpecialForm (..), XExpr (..), defaultEnv)
+import Test.Hspec (describe, hspec, it, shouldBe)
 import Test.Hspec.Expectations (Expectation)
 import Test.HUnit.Lang (assertFailure)
 import Test.QuickCheck (Arbitrary, Gen, Property, arbitrary, elements, property, resize)
+import Test.QuickCheck.Gen (listOf, oneof)
 import Test.QuickCheck.Instances.Char (lowerAlpha, numeric, upperAlpha)
-import Test.QuickCheck.Gen (oneof, listOf)
 import qualified Test.QuickCheck.Monadic as Monadic
-import Syntax (Env, XExpr(..), Info(..), Expr(..), SpecialForm(..), defaultEnv)
-import Eval (EvalErr(..), ErrType(..), run)
 
 runTests :: IO ()
 runTests = hspec $ do
@@ -337,15 +337,15 @@ inEnvEvaluatesTo :: Env -> XExpr -> XExpr -> Expectation
 inEnvEvaluatesTo env expr expected = do
   (result, _) <- Eval.run env expr
   case result of
-    (Right actual)  -> actual `shouldBe` expected
-    (Left err)      -> assertFailure (show err)
+    (Right actual) -> actual `shouldBe` expected
+    (Left err)     -> assertFailure (show err)
 
 evaluatesTo :: XExpr -> XExpr -> Expectation
 evaluatesTo expr expected = do
   (result, _) <- Eval.run defaultEnv expr
   case result of
-    (Right actual)  -> actual `shouldBe` expected
-    (Left err)      -> assertFailure (show err)
+    (Right actual) -> actual `shouldBe` expected
+    (Left err)     -> assertFailure (show err)
 
 failsWith :: XExpr -> ErrType -> Expectation
 failsWith expr expected = do

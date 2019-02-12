@@ -7,8 +7,8 @@ import Data.Void (Void)
 import qualified System.Console.Haskeline as H
 import qualified System.Directory as D
 import qualified System.FilePath as F
-import qualified Text.Megaparsec.Char as Char
 import qualified Text.Megaparsec as Mega
+import qualified Text.Megaparsec.Char as Char
 
 import qualified Eval as E
 import qualified Parse as P
@@ -39,7 +39,7 @@ loop env = do
     Nothing     -> return ()
     Just ""     -> loop env
     Just cmd    -> case parseReplCmd cmd of
-      Just (Eval gustonStr)    -> runEvalCmd env gustonStr
+      Just (Eval gustonStr) -> runEvalCmd env gustonStr
       Just (Load filepaths) -> runLoadCmd env filepaths
       Just Exit             -> runQuitCmd
       Nothing               -> runUnknownCmd env cmd
@@ -93,8 +93,8 @@ evalInEnv env str = do
     Right sexpr -> do
       (result, env') <- E.run env sexpr
       case result of
-        Left err  -> return $ Left $ show err
-        Right x   -> return $ Right (x, env')
+        Left err -> return $ Left $ show err
+        Right x  -> return $ Right (x, env')
     Left parseErr -> return $ Left $ Mega.errorBundlePretty parseErr
 
 type Parser = Mega.Parsec Void String

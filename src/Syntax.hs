@@ -38,10 +38,10 @@ data Expr =
 instance Show Expr where
   show s =
     case s of
-      Sym name    -> name
-      SFrm sfrm   -> show sfrm
-      Fn _ _ _    -> "<function>"
-      Lst sexprs  -> concat [ "(", unwords $ show <$> sexprs, ")" ]
+      Sym name   -> name
+      SFrm sfrm  -> show sfrm
+      Fn _ _ _   -> "<function>"
+      Lst sexprs -> concat [ "(", unwords $ show <$> sexprs, ")" ]
 
 data SpecialForm =
     First
@@ -57,15 +57,15 @@ data SpecialForm =
 
 instance Show SpecialForm where
   show sfrm = case sfrm of
-    First   -> "first"
-    Rest    -> "rest"
-    Cons    -> "::"
-    If      -> "if"
-    Def     -> "="
-    IsAtm   -> "atom?"
-    IsEq    -> "=="
-    Lambda  -> "fn"
-    Quote   -> "quote"
+    First  -> "first"
+    Rest   -> "rest"
+    Cons   -> "::"
+    If     -> "if"
+    Def    -> "="
+    IsAtm  -> "atom?"
+    IsEq   -> "=="
+    Lambda -> "fn"
+    Quote  -> "quote"
 
 type Env = M.Map String XExpr
 
