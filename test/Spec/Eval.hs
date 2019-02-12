@@ -8,7 +8,7 @@ import Test.QuickCheck (Arbitrary, Gen, Property, arbitrary, elements, property,
 import Test.QuickCheck.Instances.Char (lowerAlpha, numeric, upperAlpha)
 import Test.QuickCheck.Gen (oneof, listOf)
 import qualified Test.QuickCheck.Monadic as Monadic
-import Syntax (Env, Expr(..), Info(..), Sexpr(..), SpecialForm(..), defaultEnv)
+import Syntax (Env, XExpr(..), Info(..), Expr(..), SpecialForm(..), defaultEnv)
 import Eval (EvalErr(..), ErrType(..), run)
 
 runTests :: IO ()
@@ -18,36 +18,36 @@ runTests = hspec $ do
       describe "special forms" $ do
         describe "atom?" $ do
           it "(atom? x) evaluates to true when x is an atom" $ do
-            (toExpr $ Lst [ toExpr $ SFrm IsAtm
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Sym "x"
+            (toXExpr $ Lst [ toXExpr $ SFrm IsAtm
+                           , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Sym "x"
                                          ]
                           ])
             `evaluatesTo`
-            (toExpr $ Sym "t")
+            (toXExpr $ Sym "t")
           it "(atom? x) evaluates to true when x is an empty list" $ do
-            (toExpr $ Lst [ toExpr $ SFrm IsAtm
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Lst []
+            (toXExpr $ Lst [ toXExpr $ SFrm IsAtm
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Lst []
                                          ]
                  ])
             `evaluatesTo`
-            (toExpr $ Sym "t")
+            (toXExpr $ Sym "t")
           it "(atom? x) evaluates to false when x is a non-empty list" $ do
-            (toExpr $ Lst [ toExpr $ SFrm IsAtm
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Lst [ toExpr $ Sym "foo" ]
+            (toXExpr $ Lst [ toXExpr $ SFrm IsAtm
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Lst [ toXExpr $ Sym "foo" ]
                                          ]
                           ])
             `evaluatesTo`
-            (toExpr $ Lst [])
+            (toXExpr $ Lst [])
           it "(atom? x y) fails with NumArgs" $ do
-            (toExpr $ Lst [ toExpr $ SFrm IsAtm
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Sym "x"
+            (toXExpr $ Lst [ toXExpr $ SFrm IsAtm
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Sym "x"
                                          ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Sym "y"
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Sym "y"
                                          ]
                           ])
             `failsWith`
@@ -55,25 +55,25 @@ runTests = hspec $ do
 
         describe "car" $ do
           it "(car xs) returns the first item in xs" $ do
-            (toExpr $ Lst [ toExpr $ SFrm First
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Lst [ toExpr $ Sym "x"]
+            (toXExpr $ Lst [ toXExpr $ SFrm First
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Lst [ toXExpr $ Sym "x"]
                                          ]
                           ])
             `evaluatesTo`
-            (toExpr $ Sym "x")
+            (toXExpr $ Sym "x")
           it "(car xs) fails with WrongTipe if xs is not a list" $ do
-            (toExpr $ Lst [ toExpr $ SFrm First
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Sym "x"
+            (toXExpr $ Lst [ toXExpr $ SFrm First
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Sym "x"
                                          ]
                           ])
             `failsWith`
             WrongTipe
           it "(car xs) fails with LstLength if xs is an empty list" $ do
-            (toExpr $ Lst [ toExpr $ SFrm First
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Lst []
+            (toXExpr $ Lst [ toXExpr $ SFrm First
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Lst []
                                          ]
                           ])
             `failsWith`
@@ -81,28 +81,28 @@ runTests = hspec $ do
 
         describe "cdr" $ do
           it "(cdr xs) returns the tail of xs" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Rest
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Lst [ toExpr $ Sym "x"
-                                                        , toExpr $ Sym "y"
-                                                        , toExpr $ Sym "z"
+            (toXExpr $ Lst [ toXExpr $ SFrm Rest
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Lst [ toXExpr $ Sym "x"
+                                                        , toXExpr $ Sym "y"
+                                                        , toXExpr $ Sym "z"
                                                         ]
                                          ]
                           ])
             `evaluatesTo`
-            (toExpr $ Lst [ toExpr $ Sym "y", toExpr $ Sym "z" ])
+            (toXExpr $ Lst [ toXExpr $ Sym "y", toXExpr $ Sym "z" ])
           it "(cdr xs) returns an empty list if xs is empty" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Rest
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Lst []
+            (toXExpr $ Lst [ toXExpr $ SFrm Rest
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Lst []
                                          ]
                           ])
             `evaluatesTo`
-            (toExpr $ Lst [])
+            (toXExpr $ Lst [])
           it "(car xs) throws an exception if xs is not a list" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Rest
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Sym "foo"
+            (toXExpr $ Lst [ toXExpr $ SFrm Rest
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Sym "foo"
                                          ]
                           ])
             `failsWith`
@@ -110,176 +110,176 @@ runTests = hspec $ do
 
         describe "if" $ do
           it "(if (quote t) (quote x) (quote y)) evaluates to x" $ do
-            (toExpr $ Lst [ toExpr $ SFrm If
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "t" ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "x" ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "y" ]
+            (toXExpr $ Lst [ toXExpr $ SFrm If
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Sym "t" ]
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Sym "x" ]
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Sym "y" ]
                           ])
             `evaluatesTo`
-            (toExpr $ Sym "x")
+            (toXExpr $ Sym "x")
           it "(if (quote ()) (quote x) (quote y)) evaluates to y" $ do
-            (toExpr $ Lst [ toExpr $ SFrm If
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Lst [] ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "x" ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "y" ]
+            (toXExpr $ Lst [ toXExpr $ SFrm If
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Lst [] ]
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Sym "x" ]
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Sym "y" ]
                           ])
             `evaluatesTo`
-            (toExpr $ Sym "y")
+            (toXExpr $ Sym "y")
           it "(cond (quote ())) fails with NumArgs" $ do
-            (toExpr $ Lst [ toExpr $ SFrm If
-                          , toExpr $ Sym "foo"
+            (toXExpr $ Lst [ toXExpr $ SFrm If
+                          , toXExpr $ Sym "foo"
                           ])
             `failsWith`
             NumArgs
 
         describe "cons" $ do
           it "(cons x y) adds item x to the head of list y" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Cons
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Sym "x"
+            (toXExpr $ Lst [ toXExpr $ SFrm Cons
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Sym "x"
                                          ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Lst [ toExpr $ Sym "y"
-                                                        , toExpr $ Sym "z"
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Lst [ toXExpr $ Sym "y"
+                                                        , toXExpr $ Sym "z"
                                                         ]
                                          ]
                           ])
             `evaluatesTo`
-            (toExpr $ Lst [ toExpr $ Sym "x"
-                          , toExpr $ Sym "y"
-                          , toExpr $ Sym "z"
+            (toXExpr $ Lst [ toXExpr $ Sym "x"
+                          , toXExpr $ Sym "y"
+                          , toXExpr $ Sym "z"
                           ])
           it "(cons x y) returns a list of one if y is an empty list" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Cons
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Sym "x"
+            (toXExpr $ Lst [ toXExpr $ SFrm Cons
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Sym "x"
                                          ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Lst []
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Lst []
                                          ]
                           ])
             `evaluatesTo`
-            (toExpr $ Lst [ toExpr $ Sym "x" ])
+            (toXExpr $ Lst [ toXExpr $ Sym "x" ])
           it "(cons (quote x) (quote y)) fails with WrongTipe" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Cons
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Sym "x"
+            (toXExpr $ Lst [ toXExpr $ SFrm Cons
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Sym "x"
                                          ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Sym "y"
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Sym "y"
                                          ]
                           ])
             `failsWith`
             WrongTipe
           it "(cons x y z) fails with NumArgs" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Cons
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "x" ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "y" ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "y" ]
+            (toXExpr $ Lst [ toXExpr $ SFrm Cons
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Sym "x" ]
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Sym "y" ]
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Sym "y" ]
                           ])
             `failsWith`
             NumArgs
 
         describe "define" $ do
           it "(define foo y) binds the value of y to the symbol foo" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Def
-                          , toExpr $ Sym "foo"
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "x" ]
+            (toXExpr $ Lst [ toXExpr $ SFrm Def
+                          , toXExpr $ Sym "foo"
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Sym "x" ]
                           ])
             `insertsInEnv`
-            ("foo", toExpr $ Sym "x")
+            ("foo", toXExpr $ Sym "x")
           it "(define '(x) 'x 'y) fails with WrongTipe" $ do
-            (toExpr $ Lst [ toExpr $  SFrm Def
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Lst [ toExpr $ Sym "x" ]
+            (toXExpr $ Lst [ toXExpr $  SFrm Def
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Lst [ toXExpr $ Sym "x" ]
                                          ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Sym "x"
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Sym "x"
                                          ]
                           ])
             `failsWith`
             WrongTipe
           it "(define x) fails with NumArgs" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Def
-                          , toExpr $ Lst [ toExpr $ Sym "x" ]
+            (toXExpr $ Lst [ toXExpr $ SFrm Def
+                          , toXExpr $ Lst [ toXExpr $ Sym "x" ]
                           ])
             `failsWith`
             NumArgs
 
         describe "eq?" $ do
           it "(eq? x y) evaluates to true if x and y are equivalent symbols" $ do
-            (toExpr $ Lst [ toExpr $ SFrm IsEq
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "x" ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "x" ]
+            (toXExpr $ Lst [ toXExpr $ SFrm IsEq
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Sym "x" ]
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Sym "x" ]
                           ])
             `evaluatesTo`
-            (toExpr $ Sym "t")
+            (toXExpr $ Sym "t")
           it "(eq? x y) evaluates to false if x and y are not equivalent symbols" $ do
-            (toExpr $ Lst [ toExpr $ SFrm IsEq
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "x" ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Sym "y" ]
+            (toXExpr $ Lst [ toXExpr $ SFrm IsEq
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Sym "x" ]
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Sym "y" ]
                           ])
             `evaluatesTo`
-            (toExpr $ Lst [])
+            (toXExpr $ Lst [])
           it "(eq? x y) evaluates to true x and y are empty lists" $ do
-            (toExpr $ Lst [ toExpr $ SFrm IsEq
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Lst [] ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Lst [] ]
+            (toXExpr $ Lst [ toXExpr $ SFrm IsEq
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Lst [] ]
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Lst [] ]
                           ])
             `evaluatesTo`
-            (toExpr $ Sym "t")
+            (toXExpr $ Sym "t")
           it "(eq? x y) evaluates to false" $ do
-            (toExpr $ Lst [ toExpr $  SFrm IsEq
-                 , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Lst [ toExpr $ Sym "x" ] ]
-                 , toExpr $ Lst [ toExpr $ SFrm Quote, toExpr $ Lst [ toExpr $ Sym "x" ] ]
+            (toXExpr $ Lst [ toXExpr $  SFrm IsEq
+                 , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Lst [ toXExpr $ Sym "x" ] ]
+                 , toXExpr $ Lst [ toXExpr $ SFrm Quote, toXExpr $ Lst [ toXExpr $ Sym "x" ] ]
                  ])
             `evaluatesTo`
-            (toExpr $ Lst [])
+            (toXExpr $ Lst [])
           it "(eq? x) fails with NumArgs" $ do
-            (toExpr $ Lst [ toExpr $ SFrm IsEq, toExpr $ Sym "x"])
+            (toXExpr $ Lst [ toXExpr $ SFrm IsEq, toXExpr $ Sym "x"])
             `failsWith`
             NumArgs
           it "(eq? x y z) fails with NumArgs" $ do
-            (toExpr $ Lst [ toExpr $ SFrm IsEq
-                          , toExpr $ Sym "x"
-                          , toExpr $ Sym "y"
-                          , toExpr $ Sym "z"
+            (toXExpr $ Lst [ toXExpr $ SFrm IsEq
+                          , toXExpr $ Sym "x"
+                          , toXExpr $ Sym "y"
+                          , toXExpr $ Sym "z"
                           ])
             `failsWith`
             NumArgs
 
         describe "lambda" $ do
           it "(lambda (x y) x) returns a function" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Lambda
-                          , toExpr $ Lst [ toExpr $ Sym "x"
-                                         , toExpr $ Sym "y"
+            (toXExpr $ Lst [ toXExpr $ SFrm Lambda
+                          , toXExpr $ Lst [ toXExpr $ Sym "x"
+                                         , toXExpr $ Sym "y"
                                          ]
-                          , toExpr $ Sym "x"
+                          , toXExpr $ Sym "x"
                           ])
             `evaluatesTo`
-            (toExpr $ Fn defaultEnv [ toExpr $ Sym "x", toExpr $ Sym "y"] (toExpr $ Sym "x"))
+            (toXExpr $ Fn defaultEnv [ toXExpr $ Sym "x", toXExpr $ Sym "y"] (toXExpr $ Sym "x"))
           it "(lambda (x y)) fails with NumArgs" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Lambda
-                          , toExpr $ Lst [ toExpr $ Sym "x"
-                                         , toExpr $ Sym "y"
+            (toXExpr $ Lst [ toXExpr $ SFrm Lambda
+                          , toXExpr $ Lst [ toXExpr $ Sym "x"
+                                         , toXExpr $ Sym "y"
                                          ]
                           ])
             `failsWith`
             NumArgs
           it "(lambda (x y) z a) fails with NumArgs" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Lambda
-                          , toExpr $ Lst [ toExpr $ Sym "x"
-                                         , toExpr $ Sym "y"
+            (toXExpr $ Lst [ toXExpr $ SFrm Lambda
+                          , toXExpr $ Lst [ toXExpr $ Sym "x"
+                                         , toXExpr $ Sym "y"
                                          ]
-                          , toExpr $ Sym "z"
-                          , toExpr $ Sym "a"
+                          , toXExpr $ Sym "z"
+                          , toXExpr $ Sym "a"
                           ])
             `failsWith`
             NumArgs
           it "(lambda x y) fails with WrongTipe" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Lambda
-                          , toExpr $ Sym "x"
-                          , toExpr $ Sym "y"
+            (toXExpr $ Lst [ toXExpr $ SFrm Lambda
+                          , toXExpr $ Sym "x"
+                          , toXExpr $ Sym "y"
                           ])
             `failsWith`
             WrongTipe
@@ -288,37 +288,37 @@ runTests = hspec $ do
           it "(quote <lisp expression>) evaluates to <lisp expression>" $ do
             property prop_eval_quote
           it "(quote x) evaluates to the symbol x" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Quote
-                          , toExpr $ Sym "x"
+            (toXExpr $ Lst [ toXExpr $ SFrm Quote
+                          , toXExpr $ Sym "x"
                           ])
             `evaluatesTo`
-            (toExpr $ Sym "x")
+            (toXExpr $ Sym "x")
           it "(quote x y) fails with NumArgs" $ do
-            (toExpr $ Lst [ toExpr $ SFrm Quote
-                          , toExpr $ Sym "x"
-                          , toExpr $ Sym "y"
+            (toXExpr $ Lst [ toXExpr $ SFrm Quote
+                          , toXExpr $ Sym "x"
+                          , toXExpr $ Sym "y"
                           ])
             `failsWith`
             NumArgs
 
       describe "function application" $ do
           it "((lambda (x) x) (quote y)) evaluates to the symbol y" $ do
-            (toExpr $ Lst [ toExpr $ Lst [ toExpr $ SFrm Lambda
-                                         , toExpr $ Lst [ toExpr $ Sym "x" ]
-                                         , toExpr $ Sym "x"
+            (toXExpr $ Lst [ toXExpr $ Lst [ toXExpr $ SFrm Lambda
+                                         , toXExpr $ Lst [ toXExpr $ Sym "x" ]
+                                         , toXExpr $ Sym "x"
                                          ]
-                 , toExpr $ Lst [ toExpr $ SFrm Quote
-                                , toExpr $ Sym "y"
+                 , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                , toXExpr $ Sym "y"
                                 ]
                           ])
             `evaluatesTo`
-            (toExpr $ Sym "y")
+            (toXExpr $ Sym "y")
           it "(define x (quote y) (y (quote z)) fails with NotFn" $ do
-            (toExpr $ Lst [ toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Sym "x"
+            (toXExpr $ Lst [ toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Sym "x"
                                          ]
-                          , toExpr $ Lst [ toExpr $ SFrm Quote
-                                         , toExpr $ Sym "y"
+                          , toXExpr $ Lst [ toXExpr $ SFrm Quote
+                                         , toXExpr $ Sym "y"
                                          ]
                           ])
             `failsWith`
@@ -327,34 +327,34 @@ runTests = hspec $ do
       describe "variable lookup" $ do
           it "evaluating x returns the value bound to the symbol x" $ do
             inEnvEvaluatesTo
-              (M.fromList [("foo", toExpr $ Sym "x")] <> defaultEnv)
-              (toExpr $ Sym "foo")
-              (toExpr $ Sym "x")
+              (M.fromList [("foo", toXExpr $ Sym "x")] <> defaultEnv)
+              (toXExpr $ Sym "foo")
+              (toXExpr $ Sym "x")
           it "evaluating x throws an unknown variable exception when no value is bound to x" $ do
-            (toExpr $ Sym "x") `failsWith` (UnknownVar "x")
+            (toXExpr $ Sym "x") `failsWith` (UnknownVar "x")
 
-inEnvEvaluatesTo :: Env -> Expr -> Expr -> Expectation
+inEnvEvaluatesTo :: Env -> XExpr -> XExpr -> Expectation
 inEnvEvaluatesTo env expr expected = do
   (result, _) <- Eval.run env expr
   case result of
     (Right actual)  -> actual `shouldBe` expected
     (Left err)      -> assertFailure (show err)
 
-evaluatesTo :: Expr -> Expr -> Expectation
+evaluatesTo :: XExpr -> XExpr -> Expectation
 evaluatesTo expr expected = do
   (result, _) <- Eval.run defaultEnv expr
   case result of
     (Right actual)  -> actual `shouldBe` expected
     (Left err)      -> assertFailure (show err)
 
-failsWith :: Expr -> ErrType -> Expectation
+failsWith :: XExpr -> ErrType -> Expectation
 failsWith expr expected = do
   (result, _) <- Eval.run defaultEnv expr
   case result of
     (Right x)     -> assertFailure $ "expected evaluation to fail but received: " ++ (show x)
     (Left (EvalErr actual _)) -> actual `shouldBe` expected
 
-insertsInEnv :: Expr -> (String, Expr) -> Expectation
+insertsInEnv :: XExpr -> (String, XExpr) -> Expectation
 insertsInEnv expr (key, expected) = do
   (_, env) <- Eval.run defaultEnv expr
   case M.lookup key env of
@@ -367,28 +367,28 @@ prop_eval_quote (ArbExpr expr) = Monadic.monadicIO $ do
   case result of
     (Right actual) -> Monadic.assert (actual == expr)
     _              -> Monadic.assert False
-  where quotedExpr = toExpr $ Lst [ toExpr $ SFrm Quote, expr ]
+  where quotedExpr = toXExpr $ Lst [ toXExpr $ SFrm Quote, expr ]
 
-toExpr :: Sexpr -> Expr
-toExpr sexpr = Expr sexpr dummyInfo
+toXExpr :: Expr -> XExpr
+toXExpr expr = XExpr expr dummyInfo
 
 dummyInfo :: Info
-dummyInfo = Info 0 0 ""
+dummyInfo = Info (0, 0)
 
-newtype ArbExpr = ArbExpr Expr deriving (Eq, Show)
+newtype ArbExpr = ArbExpr XExpr deriving (Eq, Show)
 
 instance Arbitrary ArbExpr where
   arbitrary = ArbExpr <$> oneof [ genSym, genSFrm, genLst ]
 
-genSym :: Gen Expr
+genSym :: Gen XExpr
 genSym = do
   name <- listOf $ oneof [ numeric, lowerAlpha, upperAlpha ]
-  return $ toExpr (Sym name)
+  return $ toXExpr (Sym name)
 
-genSFrm :: Gen Expr
-genSFrm = (toExpr . SFrm) <$> elements [ First , Rest , Cons , If , Def , IsAtm , IsEq , Lambda , Quote ]
+genSFrm :: Gen XExpr
+genSFrm = (toXExpr . SFrm) <$> elements [ First , Rest , Cons , If , Def , IsAtm , IsEq , Lambda , Quote ]
 
-genLst :: Gen Expr
+genLst :: Gen XExpr
 genLst = do
   sexprs <- listOf $ oneof [ genSym, genSFrm, resize 2 genLst ]
-  return $ toExpr (Lst sexprs)
+  return $ toXExpr (Lst sexprs)

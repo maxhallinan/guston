@@ -6,19 +6,11 @@ import qualified Control.Applicative as A
 import qualified Control.Monad.Except as E
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
-import Data.List (intercalate)
-
-import Syntax ( Callframe(..)
-              , Callstack
-              , Env
+import Syntax ( Env
               , Expr(..)
               , Info
-              , Sexpr(..)
               , SpecialForm(..)
-              , callframe
-              , emptyCallstack
-              , popCallframe
-              , pushCallframe
+              , XExpr(..)
               )
 
 newtype Eval a = Eval { runEval :: E.ExceptT EvalErr (S.StateT EvalState IO) a }
@@ -30,61 +22,39 @@ newtype Eval a = Eval { runEval :: E.ExceptT EvalErr (S.StateT EvalState IO) a }
            , E.MonadError EvalErr
            )
 
-data EvalState = EvalState Env Callstack
+data EvalState = EvalState Env
 
 initEvalState :: Env -> EvalState
-initEvalState env = EvalState env emptyCallstack
+initEvalState env = EvalState env
 
 getEnv :: Eval Env
 getEnv = do
-  EvalState env _ <- S.get
+  EvalState env <- S.get
   return env
 
-getCallstack :: Eval Callstack
-getCallstack = do
-  EvalState _ stack <- S.get
-  return stack
-
-updateCallstack :: Callstack -> Eval ()
-updateCallstack stack = do
-  (EvalState env _) <- S.get
-  S.put $ EvalState env stack
-
-pushCallframe' :: Expr -> Eval ()
-pushCallframe' expr = do
-  stack <- getCallstack
-  updateCallstack $ pushCallframe (callframe expr) stack
-
-popCallframe' :: Eval ()
-popCallframe' = do
-  stack <- getCallstack
-  updateCallstack $ popCallframe stack
-
-updateEnv :: String -> Expr -> Eval ()
+updateEnv :: String -> XExpr -> Eval ()
 updateEnv key val = do
-  (EvalState env stack) <- S.get
-  S.put $ EvalState (M.insert key val env) stack
+  (EvalState env) <- S.get
+  S.put $ EvalState (M.insert key val env)
 
-run :: Env -> Expr -> IO (Either EvalErr Expr, Env)
+run :: Env -> XExpr -> IO (Either EvalErr XExpr, Env)
 run env expr = resultWithEnv <$> (rn expr evalState)
   where evalState = initEvalState env
         rn = S.runStateT . E.runExceptT . runEval . eval
 
-runFile :: Env -> [Expr] -> IO (Either EvalErr [Expr], Env)
+runFile :: Env -> [XExpr] -> IO (Either EvalErr [XExpr], Env)
 runFile env exprs = resultWithEnv <$> (rn evaled evalState)
   where evaled = sequence (eval <$> exprs)
         evalState = initEvalState env
         rn = S.runStateT . E.runExceptT . runEval
 
 resultWithEnv :: (a, EvalState) -> (a, Env)
-resultWithEnv (result, EvalState env _) = (result, env)
+resultWithEnv (result, EvalState env) = (result, env)
 
-data EvalErr = EvalErr ErrType Callstack
+data EvalErr = EvalErr ErrType Info
 
 instance Show EvalErr where
-  show (EvalErr errType callstack) = show errType ++ "\n" ++ cs
-    where cs = intercalate "\n" $ (show . toExpr) <$> (reverse callstack)
-          toExpr (Callframe expr) = expr
+  show (EvalErr errType info) = show errType ++ " " ++ (show info)
 
 data ErrType
   = NumArgs
@@ -105,139 +75,137 @@ instance Show ErrType where
   show Unknown = "unknown error"
   show NotPair = "not a pair"
 
-throwError :: ErrType -> Eval Expr
-throwError errType = do
-  callstack <- getCallstack
-  E.throwError $ EvalErr errType callstack 
+throwError :: ErrType -> Info -> Eval XExpr
+throwError errType info = do
+  E.throwError $ EvalErr errType info
 
-evalFile :: [Expr] -> Eval [Expr]
+evalFile :: [XExpr] -> Eval [XExpr]
 evalFile xs = sequence $ eval <$> xs
 
-eval :: Expr -> Eval Expr
-eval (Expr sexpr info) = do
+eval :: XExpr -> Eval XExpr
+eval (XExpr sexpr info) = do
   case sexpr of
-    (Sym name) -> evalSym name
-    (Lst ((Expr (SFrm sfrm) _):args)) -> evalSFrm info sfrm args
-    (Lst xs) -> evalLst xs
-    _ -> throwError Unknown
+    (Sym name) -> evalSym info name
+    (Lst ((XExpr (SFrm sfrm) _):args)) -> evalSFrm info sfrm args
+    (Lst xs) -> evalLst info xs
+    _ -> throwError Unknown info
 
-evalSym :: String -> Eval Expr
-evalSym name = do
+evalSym :: Info -> String -> Eval XExpr
+evalSym info name = do
   env <- getEnv
   case M.lookup name env of
     Just expr   -> return expr
-    Nothing     -> throwError $ UnknownVar name
+    Nothing     -> throwError (UnknownVar name) info
 
-evalSFrm :: Info -> SpecialForm -> [Expr] -> Eval Expr
-evalSFrm _ _ [] = throwError NumArgs
+evalSFrm :: Info -> SpecialForm -> [XExpr] -> Eval XExpr
+evalSFrm info _ [] = throwError NumArgs info
 evalSFrm info sfrm args = do
   case sfrm of
-    First   -> evalFirst args
-    Rest    -> evalRest args
-    If      -> evalIf args
+    First   -> evalFirst info args
+    Rest    -> evalRest info args
+    If      -> evalIf info args
     Cons    -> evalCons info args
-    Def     -> evalDef args
+    Def     -> evalDef info args
     IsAtm   -> evalIsAtm info args
     IsEq    -> evalIsEq info args
-    Lambda  -> evalLambda args
-    Quote   -> evalQuote args
+    Lambda  -> evalLambda info args
+    Quote   -> evalQuote info args
 
-evalIsAtm :: Info -> [Expr] -> Eval Expr
-evalIsAtm info [x]   = do
+evalIsAtm :: Info -> [XExpr] -> Eval XExpr
+evalIsAtm info [x] = do
   y <- eval x
   case y of
-    Expr (Sym _) _ -> return $ Expr (Sym "t") info
-    Expr (Lst []) _ -> return $ Expr (Sym "t") info
-    Expr _ _ -> return $ Expr (Lst []) info
-evalIsAtm _ _ = throwError NumArgs
+    XExpr (Sym _) _ -> return $ XExpr (Sym "t") info
+    XExpr (Lst []) _ -> return $ XExpr (Sym "t") info
+    XExpr _ _ -> return $ XExpr (Lst []) info
+evalIsAtm info _ = throwError NumArgs info
 
-evalIsEq :: Info -> [Expr] -> Eval Expr
+evalIsEq :: Info -> [XExpr] -> Eval XExpr
 evalIsEq info [x, y] = do
-  (Expr x2 _, Expr y2 _) <- A.liftA2 (,) (eval x) (eval y)
+  (XExpr x2 _, XExpr y2 _) <- A.liftA2 (,) (eval x) (eval y)
   case (x2, y2) of
     (Sym name1, Sym name2) ->
       if name1 == name2
-      then return $ Expr (Sym "t") info
-      else return $ Expr (Lst []) info
-    (Lst [], Lst []) -> return $ Expr (Sym "t") info
-    (_, _)  -> return $ Expr (Lst []) info
-evalIsEq _ _ = throwError NumArgs
+      then return $ XExpr (Sym "t") info
+      else return $ XExpr (Lst []) info
+    (Lst [], Lst []) -> return $ XExpr (Sym "t") info
+    (_, _)  -> return $ XExpr (Lst []) info
+evalIsEq info _ = throwError NumArgs info
 
-evalFirst :: [Expr] -> Eval Expr
-evalFirst [x] = do
-  Expr e info <- eval x
+evalFirst :: Info -> [XExpr] -> Eval XExpr
+evalFirst _ [x] = do
+  XExpr e info <- eval x
   case e of
-    (Lst []) -> throwError LstLength
-    (Lst ((Expr y _):_)) -> return $ Expr y info
-    _ -> throwError WrongTipe
-evalFirst _ = throwError NumArgs
+    (Lst []) -> throwError LstLength info
+    (Lst ((XExpr y _):_)) -> return $ XExpr y info
+    _ -> throwError WrongTipe info
+evalFirst info _ = throwError NumArgs info
 
-evalRest :: [Expr] -> Eval Expr
-evalRest [x] = do
-  Expr e info <- eval x
+evalRest :: Info -> [XExpr] -> Eval XExpr
+evalRest _ [x] = do
+  XExpr e info <- eval x
   case e of
-    (Lst [])      -> return $ Expr (Lst []) info
-    (Lst (_:ys))  -> return $ Expr (Lst ys) info
-    _             -> throwError WrongTipe
-evalRest _ = throwError NumArgs
+    (Lst [])      -> return $ XExpr (Lst []) info
+    (Lst (_:ys))  -> return $ XExpr (Lst ys) info
+    _             -> throwError WrongTipe info
+evalRest info _ = throwError NumArgs info
 
-evalCons :: Info -> [Expr] -> Eval Expr
+evalCons :: Info -> [XExpr] -> Eval XExpr
 evalCons info [x, xs] = do
-  Expr e1 i1    <- eval x
-  Expr e2 _     <- eval xs
+  XExpr e1 i1    <- eval x
+  XExpr e2 _     <- eval xs
   case (e1, e2) of
-    (_, (Lst ys)) -> return $ Expr (Lst ((Expr e1 i1):ys)) info
-    (_, _)        -> throwError WrongTipe
-evalCons _ _ = throwError NumArgs
+    (_, (Lst ys)) -> return $ XExpr (Lst ((XExpr e1 i1):ys)) info
+    (_, _)        -> throwError WrongTipe info
+evalCons info _ = throwError NumArgs info
 
-evalIf :: [Expr] -> Eval Expr
-evalIf [c, e1, e2] = do
+evalIf :: Info -> [XExpr] -> Eval XExpr
+evalIf _ [c, e1, e2] = do
   x <- eval c
   case x of
-    Expr (Lst []) _ -> eval e2
-    Expr _ _ -> eval e1
-evalIf _ = throwError NumArgs
+    XExpr (Lst []) _ -> eval e2
+    XExpr _ _ -> eval e1
+evalIf info _ = throwError NumArgs info
 
-evalDef :: [Expr] -> Eval Expr
-evalDef [Expr (Sym key) _, expr] = do
+evalDef :: Info -> [XExpr] -> Eval XExpr
+evalDef _ [XExpr (Sym key) _, expr] = do
   val <- eval expr
   _ <- updateEnv key val
   return val
-evalDef [_,_] = throwError WrongTipe
-evalDef _ = throwError NumArgs
+evalDef info [_,_] = throwError WrongTipe info
+evalDef info _ = throwError NumArgs info
 
-evalLambda :: [Expr] -> Eval Expr
-evalLambda [Expr (Lst params) info, body] = do
+evalLambda :: Info -> [XExpr] -> Eval XExpr
+evalLambda _ [XExpr (Lst params) info, body] = do
   env <- getEnv
-  return $ Expr (Fn env params body) info
-evalLambda [_,_] = throwError WrongTipe
-evalLambda _ = throwError NumArgs
+  return $ XExpr (Fn env params body) info
+evalLambda info [_,_] = throwError WrongTipe info
+evalLambda info _ = throwError NumArgs info
 
-evalQuote :: [Expr] -> Eval Expr
-evalQuote [Expr x info] = return $ Expr x info
-evalQuote _ = throwError NumArgs
+evalQuote :: Info -> [XExpr] -> Eval XExpr
+evalQuote _ [XExpr x info] = return $ XExpr x info
+evalQuote info _ = throwError NumArgs info
 
-evalLst :: [Expr] -> Eval Expr
-evalLst [] = throwError NumArgs
-evalLst (x:xs) = do
-  Expr fn _ <- eval x
+evalLst :: Info -> [XExpr] -> Eval XExpr
+evalLst info [] = throwError NumArgs info
+evalLst _ (x:xs) = do
+  XExpr fn info <- eval x
   case fn of
     Fn localEnv params body -> do
       globalEnv <- getEnv
       let env   = localEnv <> globalEnv
       let expr  = applyLambda params xs body
       evalInLocalEnv env expr
-    _  -> throwError NotFn
+    _  -> throwError NotFn info
 
-applyLambda :: [Expr] -> [Expr] -> Expr -> Eval Expr
+applyLambda :: [XExpr] -> [XExpr] -> XExpr -> Eval XExpr
 applyLambda params args body = do
-  EvalState env stack <- S.get
+  EvalState env <- S.get
   args'   <- traverse eval args
-  let env' = M.fromList (zipWith (\(Expr (Sym k) _) v -> (k, v)) params args') <> env
-  Eval $ E.mapExceptT (S.withStateT (const (EvalState env' stack))) (runEval $ eval body)
+  let env' = M.fromList (zipWith (\(XExpr (Sym k) _) v -> (k, v)) params args') <> env
+  Eval $ E.mapExceptT (S.withStateT (const (EvalState env'))) (runEval $ eval body)
 
-evalInLocalEnv :: Env -> Eval Expr -> Eval Expr
+evalInLocalEnv :: Env -> Eval XExpr -> Eval XExpr
 evalInLocalEnv env expr = do
-  stack <- getCallstack
-  let localState = EvalState env stack
+  let localState = EvalState env
   Eval $ E.mapExceptT (S.withStateT $ const localState) (runEval expr)

@@ -87,7 +87,7 @@ runUnknownCmd env cmd = do
   H.outputStrLn $ "unknown command: \"" ++ cmd ++ "\""
   loop env
 
-evalInEnv :: S.Env -> String -> IO (Either String (S.Expr, S.Env))
+evalInEnv :: S.Env -> String -> IO (Either String (S.XExpr, S.Env))
 evalInEnv env str = do
   case P.parseStr str of
     Right sexpr -> do

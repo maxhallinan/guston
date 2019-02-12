@@ -1,76 +1,47 @@
 module Syntax
-  ( Callframe(..)
-  , Callstack
-  , Env
+  ( Env
   , Expr(..)
-  , Sexpr(..)
-  , SpecialForm(..)
   , Info(..)
-  , callframe
+  , SpecialForm(..)
+  , XExpr(..)
   , defaultEnv
-  , emptyCallstack
-  , popCallframe
-  , pushCallframe
   ) where
 
 import qualified Data.Map as M
 import Data.String (unwords)
 
-data Expr = Expr Sexpr Info deriving (Eq)
+data XExpr = XExpr Expr Info
 
-instance Show Expr where
-  show (Expr s _) = show s
+instance Eq XExpr where
+  (==) (XExpr e1 _) (XExpr e2 _) = e1 == e2
+
+instance Show XExpr where
+  show (XExpr s _) = show s
 
 data Info =
-  Info { infoCol :: Int
-       , infoLine :: Int
-       , infoSourceName :: FilePath
+  Info { infoOffsetRange :: (Int, Int)
        }
 
 instance Show Info where
-  show (Info col line sourceName) =
-    sourceName ++ " " ++ (show line) ++ ":" ++ (show col)
+  show (Info (start, end)) = (show start) ++ " - " ++ (show end)
 
 instance Eq Info where
-  (==) (Info c1 l1 s1) (Info c2 l2 s2) = (c1 == c2) && (l1 == l2) && (s1 == s2)
+  (==) (Info (s1, e1)) (Info (s2, e2)) = (s1 == s2) && (e1 == e2)
 
-data Sexpr =
+data Expr =
     Sym String
   | SFrm SpecialForm
-  | Fn Env [Expr] Expr
-  | Lst [Expr]
+  | Fn Env [XExpr] XExpr
+  | Lst [XExpr]
   deriving (Eq)
 
-instance Show Sexpr where
+instance Show Expr where
   show s =
     case s of
       Sym name    -> name
       SFrm sfrm   -> show sfrm
-      Fn _ _ _    -> "<lambda function>"
+      Fn _ _ _    -> "<function>"
       Lst sexprs  -> concat [ "(", unwords $ show <$> sexprs, ")" ]
-
-
-type Env = M.Map String Expr
-
-defaultEnv :: Env
-defaultEnv = M.empty
-
-type Callstack = [Callframe]
-
-data Callframe = Callframe Expr deriving (Show)
-
-callframe :: Expr -> Callframe
-callframe expr = Callframe expr
-
-emptyCallstack :: Callstack
-emptyCallstack = []
-
-pushCallframe :: Callframe -> Callstack -> Callstack
-pushCallframe frame stack = (frame:stack)
-
-popCallframe :: Callstack -> Callstack
-popCallframe [] = []
-popCallframe (_:stack) = stack
 
 data SpecialForm =
     First
@@ -95,3 +66,8 @@ instance Show SpecialForm where
     IsEq    -> "=="
     Lambda  -> "fn"
     Quote   -> "quote"
+
+type Env = M.Map String XExpr
+
+defaultEnv :: Env
+defaultEnv = M.empty

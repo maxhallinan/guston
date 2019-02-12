@@ -7,7 +7,7 @@ import Test.QuickCheck (Arbitrary, Gen, arbitrary, elements, property, resize, s
 import Test.QuickCheck.Gen (oneof, listOf)
 import Test.QuickCheck.Instances.Char (lowerAlpha, nonSpace, numeric, upperAlpha)
 
-import Syntax (Expr(..), Info(..), Sexpr(..), SpecialForm(..))
+import Syntax (XExpr(..), Info(..), Expr(..), SpecialForm(..))
 import Parse (parseStr, parseFile)
 
 runTests :: IO ()
@@ -16,23 +16,23 @@ runTests = hspec $ do
     describe "Parse.parseFile" $ do
       describe "special forms" $ do
         it "parses atom?" $ do
-          "atom?" `parsesFileTo` [Expr (SFrm IsAtm) (Info 1 1 "")]
+          "atom?" `parsesFileTo` [XExpr (SFrm IsAtm) (Info (1,1))]
         it "parses first" $ do
-          "first" `parsesFileTo` [Expr (SFrm First) (Info 1 1 "")]
+          "first" `parsesFileTo` [XExpr (SFrm First) (Info (1,1))]
         it "parses rest" $ do
-          "rest" `parsesFileTo` [Expr (SFrm Rest) (Info 1 1 "")]
+          "rest" `parsesFileTo` [XExpr (SFrm Rest) (Info (1,1))]
         it "parses ::" $ do
-          "::" `parsesFileTo` [Expr (SFrm Cons) (Info 1 1 "")]
+          "::" `parsesFileTo` [XExpr (SFrm Cons) (Info (1,1))]
         it "parses =" $ do
-          "=" `parsesFileTo` [Expr (SFrm Def) (Info 1 1 "")]
+          "=" `parsesFileTo` [XExpr (SFrm Def) (Info (1,1))]
         it "parses ==" $ do
-          "==" `parsesFileTo` [Expr (SFrm IsEq) (Info 1 1 "")]
+          "==" `parsesFileTo` [XExpr (SFrm IsEq) (Info (1,1))]
         it "parses fn" $ do
-          "fn" `parsesFileTo` [Expr (SFrm Lambda) (Info 1 1 "")]
+          "fn" `parsesFileTo` [XExpr (SFrm Lambda) (Info (1,1))]
         it "parses quote" $ do
-          "quote" `parsesFileTo` [Expr (SFrm Quote) (Info 1 1 "")]
+          "quote" `parsesFileTo` [XExpr (SFrm Quote) (Info (1,1))]
         it "parses if" $ do
-          "if" `parsesFileTo` [Expr (SFrm If) (Info 1 1 "")]
+          "if" `parsesFileTo` [XExpr (SFrm If) (Info (1,1))]
 
       describe "symbol" $ do
         it "parses a symbol" $ do
@@ -45,23 +45,23 @@ runTests = hspec $ do
     describe "Parser.parseStr" $ do
       describe "special forms" $ do
         it "parses atom?" $ do
-          "atom?" `parsesStrTo` Expr (SFrm IsAtm) (Info 1 1 "")
+          "atom?" `parsesStrTo` XExpr (SFrm IsAtm) (Info (1,1))
         it "parses first" $ do
-          "first" `parsesStrTo` Expr (SFrm First) (Info 1 1 "")
+          "first" `parsesStrTo` XExpr (SFrm First) (Info (1,1))
         it "parses rest" $ do
-          "rest" `parsesStrTo` Expr (SFrm Rest) (Info 1 1 "")
+          "rest" `parsesStrTo` XExpr (SFrm Rest) (Info (1,1))
         it "parses ::" $ do
-          "::" `parsesStrTo` Expr (SFrm Cons) (Info 1 1 "")
+          "::" `parsesStrTo` XExpr (SFrm Cons) (Info (1,1))
         it "parses if" $ do
-          "if" `parsesStrTo` Expr (SFrm If) (Info 1 1 "")
+          "if" `parsesStrTo` XExpr (SFrm If) (Info (1,1))
         it "parses =" $ do
-          "=" `parsesStrTo` Expr (SFrm Def) (Info 1 1 "")
+          "=" `parsesStrTo` XExpr (SFrm Def) (Info (1,1))
         it "parses ==" $ do
-          "==" `parsesStrTo` Expr (SFrm IsEq) (Info 1 1 "")
+          "==" `parsesStrTo` XExpr (SFrm IsEq) (Info (1,1))
         it "parses fn" $ do
-          "fn" `parsesStrTo` Expr (SFrm Lambda) (Info 1 1 "")
+          "fn" `parsesStrTo` XExpr (SFrm Lambda) (Info (1,1))
         it "parses quote" $ do
-          "quote" `parsesStrTo` Expr (SFrm Quote) (Info 1 1 "")
+          "quote" `parsesStrTo` XExpr (SFrm Quote) (Info (1,1))
 
       describe "symbol" $ do
         it "parses a symbol" $ do
@@ -71,13 +71,13 @@ runTests = hspec $ do
         it "parses a list" $ do
           property prop_parseStr_List
 
-parsesFileTo :: String -> [Expr] -> Expectation
+parsesFileTo :: String -> [XExpr] -> Expectation
 parsesFileTo file expr =
   case parseFile "" file of
     Right result  -> result `shouldBe` expr
     Left err      -> assertFailure $ show err
 
-parsesStrTo :: String -> Expr -> Expectation
+parsesStrTo :: String -> XExpr -> Expectation
 parsesStrTo str expr =
   case parseStr str of
     Right result  -> result `shouldBe` expr
@@ -86,7 +86,7 @@ parsesStrTo str expr =
 prop_parseFile_Sym :: ArbSym -> Bool
 prop_parseFile_Sym (ArbSym s) =
   case parseFile "" s of
-    (Right [Expr result _]) ->
+    (Right [XExpr result _]) ->
       result == Sym s
     _ ->
       False
@@ -94,7 +94,7 @@ prop_parseFile_Sym (ArbSym s) =
 prop_parseFile_List :: ArbLst -> Bool
 prop_parseFile_List (ArbLst l) =
   case parseFile "" l of
-    Right [Expr (Lst _) _] ->
+    Right [XExpr (Lst _) _] ->
       True
     _ ->
       False
@@ -102,7 +102,7 @@ prop_parseFile_List (ArbLst l) =
 prop_parseStr_Sym :: ArbSym -> Bool
 prop_parseStr_Sym (ArbSym s) =
   case parseStr s of
-    Right (Expr result _) ->
+    Right (XExpr result _) ->
       result == Sym s
     _ ->
       False
@@ -110,7 +110,7 @@ prop_parseStr_Sym (ArbSym s) =
 prop_parseStr_List :: ArbLst -> Bool
 prop_parseStr_List (ArbLst l) =
   case parseStr l of
-    Right (Expr (Lst _) _) ->
+    Right (XExpr (Lst _) _) ->
       True
     _ ->
       False
