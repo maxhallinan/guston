@@ -1,20 +1,3 @@
 # Guston
 
-A dialect of Lisp.
-
-**Grammar**
-
-```ebnf
-sexpr = atom | list
-
-list = "(" , { sexpr } , ")"
-
-atom = symbol
-
-symbol = symbol-start , { symbol-char }
-
-symbol-initial = "!" | "$" | "%" | "&" | "*" | "/" | ":" | "<" | "=" | ">" | "?"
-               | "~" | "_" | "^" | letter
-
-symbol-subsequent = symbol-initial | digit | "." | "+" | "-"
-```
+A toy Lisp interpreter named for [Philip Guston](https://maxhallinan.com/posts/2019/05/30/start-with-just-a-few-things/).
